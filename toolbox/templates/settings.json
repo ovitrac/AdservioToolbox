@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "mcpServers": {
+    "memctl": {
+      "command": "memctl",
+      "args": ["serve"],
+      "env": {}
+    },
+    "cloakmcp": {
+      "type": "stdio",
+      "command": "cloak-mcp-server",
+      "env": {}
+    }
+  }
+}

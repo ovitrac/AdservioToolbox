@@ -1,0 +1,15 @@
+# Adservio Claude Code Toolbox — configuration
+# Precedence: CLI flags > env vars > this file > compiled defaults
+
+[eco]
+enabled_global = false
+
+[memctl]
+db = ".memory/memory.db"
+fts = "fr"
+budget = 2200
+tier = "stm"
+
+[cloak]
+policy = ".cloak/policy.yaml"
+mode = "enforce"
