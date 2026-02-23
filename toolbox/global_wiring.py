@@ -2,7 +2,7 @@
 
 Manages the user-level ~/.claude/ directory:
 - Global CloakMCP hooks in settings.json (secrets-only profile)
-- Bash permissions in settings.local.json
+- Tool permissions in settings.local.json (Bash, Read, Grep)
 - Behavioral rules in CLAUDE.md (delimited block)
 
 All operations are idempotent and reversible.
@@ -28,6 +28,9 @@ CLAUDE_MD = CLAUDE_DIR / "CLAUDE.md"
 GLOBAL_PERMISSIONS = [
     "Bash(cloak *)",
     "Bash(memctl *)",
+    "Bash(toolboxctl *)",
+    "Read",
+    "Grep",
 ]
 
 # Marker used to identify toolbox-managed hook entries
@@ -45,9 +48,12 @@ _CLAUDE_MD_BLOCK = """\
   Do not attempt to bypass, decode, or reconstruct original secret values.
 - When `TAG-xxxx` placeholders appear in files, they are CloakMCP redaction tags.
   Treat them as opaque identifiers. Do not modify or remove them.
-- `cloak` and `memctl` CLI commands are pre-authorized (no confirmation needed).
-- For projects with eco mode enabled, prefer `memory_recall` and `memory_inspect`
-  MCP tools over sequential file reads. See `.claude/eco/ECO.md` for the strategy.
+- `cloak`, `memctl`, and `toolboxctl` CLI commands are pre-authorized (no confirmation needed).
+- For projects with eco mode enabled, use the memctl MCP server tools
+  (`memory_recall`, `memory_inspect`) instead of sequential file reads.
+  These are MCP tools — do NOT run them as CLI commands.
+  CLI equivalent: `memctl search "<query>"` or `memctl show <id>`.
+  See `.claude/eco/ECO.md` for the strategy.
 - Run `toolboxctl doctor` to verify the toolbox installation at any time.
 """
 
@@ -97,7 +103,7 @@ def _cloak_scripts_path() -> Path | None:
 
 
 def install_global_permissions() -> bool:
-    """Inject cloak/memctl Bash permissions into ~/.claude/settings.local.json.
+    """Inject cloak/memctl/toolboxctl Bash permissions into settings.local.json.
 
     Returns True if changes were made.
     """

@@ -275,19 +275,35 @@ else
 
 This project is a demo for the Adservio Claude Code Toolbox.
 
-## Commands available
+## CLI tools
 
-- `/cheat` — leveled cheat sheet (L1/L2/L3)
-- `/tldr`  — concise reference summaries
-- `/eco`   — toggle eco mode
-- `/why`   — rationale and invariant explanations
-- `/how`   — step-by-step operational instructions
+- `toolboxctl` — main CLI (install, init, status, eco, env, doctor, playground)
+- `memctl` — project memory (push, pull, search, show, eco, status)
+- `cloak` — secret sanitization (scan, pack, unpack, recover, serve, policy use)
+
+## Eco mode
+
+- Toggle: `toolboxctl eco on` / `toolboxctl eco off`
+- Toggle: `memctl eco on` / `memctl eco off` (direct, v0.16.0+)
+- Check:  `toolboxctl eco` or `memctl eco status`
+- Slash:  `/eco on|off|status`
+- MCP:    `memory_eco` tool (toggle via MCP, v0.16.0+)
+- Memory database: `.memory/memory.db`
+
+## Slash commands
+
+- `/cheat [L1|L2|L3]` — leveled cheat sheet
+- `/tldr [topic]`  — concise reference summaries
+- `/eco [on|off]`   — toggle eco mode
+- `/why <topic>`   — rationale and invariant explanations
+- `/how <task>`   — step-by-step operational instructions
 
 ## Rules
 
 - Follow secure coding practices.
 - Never commit secrets to the repository.
 - CloakMCP is active: secrets in src/ are automatically detected.
+- Use `toolboxctl` for toolbox operations, `memctl` for memory, `cloak` for secrets.
 CLAUDEMD
     ok "Wrote CLAUDE.md"
 
@@ -309,7 +325,23 @@ CONFIGPY
     ok "Wrote src/config.py"
 
     # --- .cloak/policy.yaml ---
-    cat > "$DEMO_DIR/.cloak/policy.yaml" <<'POLICY'
+    mkdir -p "$DEMO_DIR/.cloak"
+
+    # Version-gated: use bundled policy (10 rules) if CloakMCP >= 0.8.2,
+    # otherwise fall back to inline 5-rule demo policy.
+    _CLOAK_VER=$(cloak --version 2>/dev/null | awk '{print $2}')
+    _USE_BUNDLED=false
+    if [ -n "$_CLOAK_VER" ] && [ "$(printf '%s\n' "0.8.2" "$_CLOAK_VER" | sort -V | head -1)" = "0.8.2" ]; then
+        if (cd "$DEMO_DIR" && cloak policy use mcp_policy.yaml) 2>/dev/null; then
+            ok "Anchored bundled mcp_policy.yaml (10 rules, CloakMCP $_CLOAK_VER)"
+            _USE_BUNDLED=true
+        else
+            warn "cloak policy use failed — falling back to inline policy"
+        fi
+    fi
+
+    if ! $_USE_BUNDLED; then
+        cat > "$DEMO_DIR/.cloak/policy.yaml" <<'POLICY'
 version: 1
 
 detection:
@@ -331,6 +363,12 @@ detection:
     action: redact
     severity: high
 
+  - id: aws_access_keys
+    type: regex
+    pattern: "\\b(AKIA|ASIA)[A-Z0-9]{16}\\b"
+    action: redact
+    severity: critical
+
   - id: high_entropy
     type: entropy
     min_entropy: 4.5
@@ -338,7 +376,8 @@ detection:
     action: redact
     severity: medium
 POLICY
-    ok "Wrote .cloak/policy.yaml"
+        ok "Wrote .cloak/policy.yaml (5-rule inline fallback)"
+    fi
 
     # --- .gitignore ---
     cat > "$DEMO_DIR/.gitignore" <<'GITIGNORE'
@@ -369,6 +408,8 @@ as a table at the end.
 Activate eco mode using natural language (do not use slash commands for this one).
 Then confirm it is active and report the memory stats.
 
+Valid CLI paths: `toolboxctl eco on`, `memctl eco on`, or the `memory_eco` MCP tool.
+
 **Expected:** Eco mode ON, 2 pre-seeded memories in the database.
 
 ---
@@ -388,7 +429,8 @@ If you see raw secrets, CloakMCP session-start hook failed.
 ## Challenge 3: Recall from memory
 
 Ask the memory system: "What secrets exist in this project?"
-Use the memctl MCP tools (memory_recall or memory_search).
+Use the memctl MCP tools (\`memory_recall\` or \`memory_search\` — these are MCP tools,
+not CLI commands). CLI alternative: \`memctl search "secrets"\`.
 
 **Expected:** The pre-seeded memories describe the fake secrets and
 the CloakMCP policy. You should get relevant results without ever
@@ -410,14 +452,14 @@ Execute each of these slash commands and confirm they produce output:
 
 ## Challenge 5: Write guard
 
-Try to add a new secret to `src/config.py`:
+Try to add a new AWS access key to `src/config.py`.
+Generate a realistic-looking key: variable name `AWS_ACCESS_KEY`, value starting
+with `AKIA` followed by 16 uppercase alphanumeric characters.
 
-```python
-AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"
-```
-
-**Expected:** The `cloak-guard-write` hook should intercept the write
-and either block it or emit a warning. Report exactly what happened.
+**Expected:** The `cloak-guard-write` PreToolUse hook scans the content
+against `.cloak/policy.yaml` and blocks writes containing critical/high
+severity matches. The demo policy includes an `aws_access_keys` rule
+matching `AKIA*` patterns — the write should be **denied** by the hook.
 
 ---
 
@@ -651,16 +693,22 @@ else
 # Usage: source $LAUNCHER
 #   or:  bash $LAUNCHER
 
-VENV_DIR="$VENV_DIR"
 DEMO_DIR="$DEMO_DIR"
 
-source "\$VENV_DIR/bin/activate"
+# Verify tools are on PATH (pipx-installed)
+for _cmd in toolboxctl memctl cloak; do
+    if ! command -v "\$_cmd" >/dev/null 2>&1; then
+        echo "[ERROR] \$_cmd not found on PATH. Run: bash install.sh" >&2
+        exit 1
+    fi
+done
+
 cd "\$DEMO_DIR"
 eval "\$(toolboxctl env)"
 
 if [ "\$0" != "\${BASH_SOURCE[0]:-}" ]; then
     # Sourced — just set up the environment
-    echo "Environment ready. Run: claude"
+    echo "Environment ready (demo: \$DEMO_DIR). Run: claude"
 else
     # Executed — launch Claude directly
     exec claude

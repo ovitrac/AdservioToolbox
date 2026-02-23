@@ -14,7 +14,7 @@ import sys
 
 from toolbox.helpers import die, error, info, run, warn
 
-MEMCTL_SPEC = "memctl[mcp]"
+MEMCTL_SPEC = "memctl[mcp,docs]"
 CLOAKMCP_SPEC = "cloakmcp"
 
 

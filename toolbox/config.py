@@ -40,6 +40,7 @@ DEFAULTS: dict[str, dict[str, Any]] = {
     "cloak": {
         "policy": ".cloak/policy.yaml",
         "mode": "enforce",
+        "fail_closed": False,
     },
 }
 
@@ -52,6 +53,7 @@ ENV_MAP: dict[tuple[str, str], str] = {
     ("memctl", "tier"): "MEMCTL_TIER",
     ("cloak", "policy"): "CLOAK_POLICY",
     ("cloak", "mode"): "CLOAK_MODE",
+    ("cloak", "fail_closed"): "CLOAK_FAIL_CLOSED",
 }
 
 

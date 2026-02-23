@@ -1,8 +1,11 @@
-"""Playground: create an isolated venv, install from origin, run smoke tests.
+"""Playground: verify installed tools and run smoke tests.
 
-Creates .playground/ in the current directory with:
-  .playground/venv/          — isolated Python virtual environment
-  .playground/playground.log — test results log
+Two modes:
+  - Standard (pipx): verifies tools on PATH, runs smoke tests directly.
+  - Dev (pyproject.toml in cwd): creates .playground/venv/, installs editable,
+    runs smoke tests against the venv.
+
+Creates .playground/playground.log with test results.
 """
 
 from __future__ import annotations
@@ -15,10 +18,9 @@ from pathlib import Path
 from toolbox.helpers import die, error, info, run, warn
 
 PLAYGROUND_DIR = ".playground"
-VENV_DIR = f"{PLAYGROUND_DIR}/venv"
 LOG_FILE = f"{PLAYGROUND_DIR}/playground.log"
 
-MEMCTL_SPEC = "memctl[mcp]"
+MEMCTL_SPEC = "memctl[mcp,docs]"
 CLOAKMCP_SPEC = "cloakmcp"
 
 
@@ -27,16 +29,20 @@ CLOAKMCP_SPEC = "cloakmcp"
 # ---------------------------------------------------------------------------
 
 
-def _venv_python() -> str:
-    """Return path to the venv Python binary."""
-    return str(Path(VENV_DIR) / "bin" / "python")
-
-
 def _log(lines: list[str], path: Path) -> None:
     """Append lines to the log file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as fh:
         for line in lines:
             fh.write(line + "\n")
+
+
+def _check_cmd(cmd: str) -> tuple[bool, str]:
+    """Return (found, path_or_msg) for a CLI tool."""
+    path = shutil.which(cmd)
+    if path:
+        return True, path
+    return False, "not found"
 
 
 # ---------------------------------------------------------------------------
@@ -60,38 +66,58 @@ def cmd_playground(args) -> None:
             warn(f"{pg} does not exist.")
         return
 
-    # Create venv
-    venv_path = cwd / VENV_DIR
-    if venv_path.exists():
-        info("Playground venv already exists, reusing.")
-    else:
-        info("Creating playground venv …")
-        run([sys.executable, "-m", "venv", str(venv_path)])
+    # Detect mode: dev (pyproject.toml present) vs standard (pipx)
+    dev_mode = (cwd / "pyproject.toml").exists()
 
-    py = _venv_python()
     log_entries: list[str] = [
         f"# Playground log — {datetime.now(timezone.utc).isoformat()}",
-        f"# Python: {py}",
+        f"# Mode: {'dev (editable)' if dev_mode else 'standard (PATH)'}",
         "",
     ]
 
-    # Upgrade pip
-    run([py, "-m", "pip", "install", "--upgrade", "pip"], quiet=True)
+    if dev_mode:
+        # Dev mode: create venv, install editable + deps
+        venv_path = cwd / PLAYGROUND_DIR / "venv"
+        if venv_path.exists():
+            info("Playground venv already exists, reusing.")
+        else:
+            info("Creating playground venv …")
+            run([sys.executable, "-m", "venv", str(venv_path)])
 
-    # Install memctl
-    info("Installing memctl into playground …")
-    r = run([py, "-m", "pip", "install", MEMCTL_SPEC], check=False, quiet=True)
-    log_entries.append(f"memctl install: {'OK' if r.returncode == 0 else 'FAIL'}")
+        py = str(venv_path / "bin" / "python")
+        run([py, "-m", "pip", "install", "--upgrade", "pip"], quiet=True)
 
-    # Install CloakMCP
-    info("Installing CloakMCP into playground …")
-    r = run([py, "-m", "pip", "install", CLOAKMCP_SPEC], check=False, quiet=True)
-    log_entries.append(f"CloakMCP install: {'OK' if r.returncode == 0 else 'FAIL'}")
+        info("Installing toolbox (editable) + deps …")
+        r = run([py, "-m", "pip", "install", "-e", str(cwd)], check=False, quiet=True)
+        log_entries.append(f"toolbox install: {'OK' if r.returncode == 0 else 'FAIL'}")
 
-    # Install toolbox (editable, from current directory)
-    info("Installing toolbox (editable) into playground …")
-    r = run([py, "-m", "pip", "install", "-e", str(cwd)], check=False, quiet=True)
-    log_entries.append(f"toolbox install: {'OK' if r.returncode == 0 else 'FAIL'}")
+        info("Installing memctl …")
+        r = run([py, "-m", "pip", "install", MEMCTL_SPEC], check=False, quiet=True)
+        log_entries.append(f"memctl install: {'OK' if r.returncode == 0 else 'FAIL'}")
+
+        info("Installing CloakMCP …")
+        r = run([py, "-m", "pip", "install", CLOAKMCP_SPEC], check=False, quiet=True)
+        log_entries.append(f"CloakMCP install: {'OK' if r.returncode == 0 else 'FAIL'}")
+
+        toolboxctl_bin = str(venv_path / "bin" / "toolboxctl")
+        memctl_bin = str(venv_path / "bin" / "memctl")
+        cloak_bin = str(venv_path / "bin" / "cloak")
+    else:
+        # Standard mode: verify tools on PATH
+        info("Verifying installed tools …")
+
+        for cmd in ("toolboxctl", "memctl", "cloak"):
+            found, path = _check_cmd(cmd)
+            if found:
+                info(f"  {cmd}: {path}")
+                log_entries.append(f"{cmd}: {path}")
+            else:
+                error(f"  {cmd}: not found — run 'toolboxctl install' first")
+                log_entries.append(f"{cmd}: NOT FOUND")
+
+        toolboxctl_bin = shutil.which("toolboxctl") or "toolboxctl"
+        memctl_bin = shutil.which("memctl") or "memctl"
+        cloak_bin = shutil.which("cloak") or "cloak"
 
     # Smoke tests
     info("Running smoke tests …")
@@ -99,10 +125,10 @@ def cmd_playground(args) -> None:
     tests_failed = 0
 
     smoke_tests = [
-        ([py, "-m", "pip", "show", "memctl"], "memctl is installed"),
-        ([py, "-m", "pip", "show", "cloakmcp"], "CloakMCP is installed"),
-        ([str(venv_path / "bin" / "toolboxctl"), "--version"], "toolboxctl --version"),
-        ([str(venv_path / "bin" / "toolboxctl"), "status"], "toolboxctl status"),
+        ([toolboxctl_bin, "--version"], "toolboxctl --version"),
+        ([toolboxctl_bin, "status"], "toolboxctl status"),
+        ([memctl_bin, "--version"], "memctl --version"),
+        ([cloak_bin, "--version"], "cloak --version"),
     ]
 
     for cmd, label in smoke_tests:
@@ -112,9 +138,10 @@ def cmd_playground(args) -> None:
         log_entries.append(f"  {status}: {label}")
         if ok:
             tests_passed += 1
+            info(f"  PASS: {label}")
         else:
             tests_failed += 1
-            error(f"FAIL: {label}")
+            error(f"  FAIL: {label}")
 
     # Summary
     log_entries.append("")

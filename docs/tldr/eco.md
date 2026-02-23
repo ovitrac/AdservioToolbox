@@ -28,7 +28,7 @@ test -f .claude/eco/.disabled && echo OFF || echo ON
 ## First-Time Setup
 
 ```bash
-pip install "memctl[mcp]"
+pip install "memctl[mcp,docs]"
 
 # Install eco mode (scripts bundled in PyPI wheel)
 bash "$(memctl scripts-path)/install_eco.sh" --db-root .memory   # install eco mode

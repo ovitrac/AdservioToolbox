@@ -30,9 +30,9 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 TOOLBOX_SPEC="adservio-toolbox"
-TOOLBOX_VERSION="0.2.1"
+TOOLBOX_VERSION="0.3.0"
 GITHUB_REPO="ovitrac/AdservioToolbox"
-MEMCTL_SPEC="memctl[mcp]"
+MEMCTL_SPEC="memctl[mcp,docs]"
 CLOAKMCP_SPEC="cloakmcp"
 TOTAL_STEPS=7
 MIN_PYTHON_MAJOR=3
@@ -702,6 +702,6 @@ if $USE_PIPX; then
     info "Upgrade later: bash install.sh --upgrade"
     info "Uninstall:     bash install.sh --uninstall"
 else
-    info "Upgrade: pip install --user --upgrade memctl[mcp] cloakmcp adservio-toolbox"
+    info "Upgrade: pip install --user --upgrade memctl[mcp,docs] cloakmcp adservio-toolbox"
 fi
 echo ""

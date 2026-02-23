@@ -19,7 +19,7 @@ This installs memctl, CloakMCP, and toolboxctl via pipx, wires Claude Code globa
 ### Option B: Manual (pipx)
 
 ```bash
-pipx install memctl[mcp]
+pipx install memctl[mcp,docs]
 pipx install cloakmcp
 pipx install adservio-toolbox
 toolboxctl install --global

@@ -73,7 +73,7 @@ Manual installation (recommended for now):
   2. pip install --user pipx
   3. pipx ensurepath
   4. Restart your terminal
-  5. pipx install memctl[mcp]
+  5. pipx install memctl[mcp,docs]
   6. pipx install cloakmcp
   7. pipx install adservio-toolbox
   8. toolboxctl install --global
@@ -151,7 +151,7 @@ if (-not $hasPipx) {
     if (-not $DryRun) {
         Write-Host ""
         Write-Info "Or install manually:"
-        Write-Info "  pipx install memctl[mcp]"
+        Write-Info "  pipx install memctl[mcp,docs]"
         Write-Info "  pipx install cloakmcp"
         Write-Info "  pipx install adservio-toolbox"
         Write-Info "  toolboxctl install --global"
@@ -165,7 +165,7 @@ if (-not $hasPipx) {
 # ---------------------------------------------------------------------------
 
 $packages = @(
-    @{ Spec = "memctl[mcp]";       Name = "memctl";            Step = 3 },
+    @{ Spec = "memctl[mcp,docs]";       Name = "memctl";            Step = 3 },
     @{ Spec = "cloakmcp";          Name = "cloakmcp";          Step = 4 },
     @{ Spec = "adservio-toolbox";  Name = "adservio-toolbox";  Step = 5 }
 )

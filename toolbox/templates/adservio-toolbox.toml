@@ -13,3 +13,4 @@ tier = "stm"
 [cloak]
 policy = ".cloak/policy.yaml"
 mode = "enforce"
+fail_closed = false

@@ -5,6 +5,37 @@ All notable changes to the Adservio Claude Code Toolbox are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-02-23
+
+### Added
+
+- **CloakMCP 0.8.2 integration:**
+  - MCP server template updated to `cloak serve` (auto-discovers `.cloak/policy.yaml`)
+  - Policy anchoring via `cloak policy use` in `install-hooks.sh` (version-gated, falls back to `CLOAK_POLICY` env var for < 0.8.2)
+  - `--policy` flag for `install-hooks.sh` (override policy source)
+  - `fail_closed` config key (`[cloak]` section) mapped to `CLOAK_FAIL_CLOSED` env var
+  - Bundled policies: `mcp_policy.yaml` (10 rules) default, `mcp_policy_enterprise.yaml` (26 rules) for `--hardened`
+- **memctl 0.16.0 integration:**
+  - Documented `memctl eco on/off/status` as valid eco toggle path
+  - Documented `memory_eco` MCP tool for eco toggle via MCP
+
+### Changed
+
+- MCP server registration for CloakMCP: `cloak-mcp-server` replaced by `cloak serve`
+- `install-hooks.sh` now has 7 steps (added policy anchoring step)
+- E2e test uses CloakMCP bundled policy when available (falls back to inline 5-rule policy)
+- Default memctl install spec: `memctl[mcp]` → `memctl[mcp,docs]` — Office and PDF document support out of the box
+- Updated docs: L3 cheat sheet, demo CLAUDE.md, CHALLENGE.md
+
+### Fixed
+
+- **Global permissions**: added `Bash(toolboxctl *)` — `toolboxctl eco on` no longer requires approval
+- **Global permissions**: added `Read` and `Grep` — slash commands (`/cheat`, `/tldr`, etc.) no longer trigger per-directory approval prompts
+- **CLAUDE.md block**: clarified `memory_recall`/`memory_inspect` as MCP-only tools; added CLI equivalents (`memctl search`, `memctl show`) to prevent `memctl recall` misuse
+- **Demo CLAUDE.md**: replaced non-existent `recall` subcommand with valid `search, show, eco, status`
+- **Challenge 5**: replaced literal AKIA key (redacted by CloakMCP during sessions) with instruction to generate one — guard-write now testable
+- **Challenge 3**: clarified MCP tools vs CLI commands with explicit fallback path
+
 ## [0.2.1] — 2026-02-23
 
 ### Fixed

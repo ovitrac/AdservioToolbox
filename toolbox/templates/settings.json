@@ -10,8 +10,8 @@
       "env": {}
     },
     "cloakmcp": {
-      "type": "stdio",
-      "command": "cloak-mcp-server",
+      "command": "cloak",
+      "args": ["serve"],
       "env": {}
     }
   }

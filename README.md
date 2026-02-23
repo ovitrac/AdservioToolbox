@@ -35,8 +35,8 @@ Files ───► │  CloakMCP  (boundary)  │  "What is allowed to leave the
 ```
 Phase 1 — Install tooling (pipx from PyPI)
 ┌────────────────────────────────────────┐
-│  pipx install memctl[mcp]              │  → memctl, memctl-serve on PATH
-│  pipx install cloakmcp                 │  → cloak, cloak-mcp-server on PATH
+│  pipx install memctl[mcp,docs]         │  → memctl, memctl-serve on PATH
+│  pipx install cloakmcp                 │  → cloak on PATH
 │  pipx install adservio-toolbox         │  → toolboxctl on PATH
 └────────────────────────────────────────┘
            ↓ then ↓
@@ -55,7 +55,7 @@ It installs, configures, and wires them — nothing more.
 
 | Scope | What | When |
 |-------|------|------|
-| **Global** (`~/.claude/`) | CloakMCP hooks, Bash permissions, CLAUDE.md block | `toolboxctl install --global` |
+| **Global** (`~/.claude/`) | CloakMCP hooks, tool permissions (Bash/Read/Grep), CLAUDE.md block | `toolboxctl install --global` |
 | **Per-project** (`.claude/`) | Slash commands, eco hooks, MCP servers, memory | `toolboxctl init` |
 
 ---
@@ -78,9 +78,9 @@ It installs, configures, and wires them — nothing more.
 ### One-liner (Linux / macOS)
 
 ```bash
-curl -fsSL https://github.com/Adservio-Dev/AdservioToolbox/releases/download/v0.2.0/install.sh \
+curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.3.0/install.sh \
   -o install.sh \
-  && curl -fsSL https://github.com/Adservio-Dev/AdservioToolbox/releases/download/v0.2.0/SHA256SUMS \
+  && curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.3.0/SHA256SUMS \
   -o SHA256SUMS \
   && (shasum -a 256 -c SHA256SUMS 2>/dev/null || sha256sum -c SHA256SUMS) \
   && bash install.sh
@@ -94,7 +94,7 @@ This installs all three tools via pipx, wires Claude Code globally, and runs `to
 
 ```bash
 # 1. Install tools via pipx (recommended) or pip
-pipx install memctl[mcp]
+pipx install memctl[mcp,docs]
 pipx install cloakmcp
 pipx install adservio-toolbox
 
@@ -137,16 +137,16 @@ $ toolboxctl doctor
 
   Adservio Toolbox — Doctor
 
-  Python       3.12.3            ✓
-  pipx         1.4.3             ✓
-  Claude Code  2.1.50            ✓
-  memctl       0.15.x            ✓  (pipx)
-  cloakmcp     0.8.x             ✓  (pipx)
-  toolboxctl   0.2.0             ✓  (pipx)
-  PATH         cloak, memctl     ✓
-  Global hooks ~/.claude/        ✓  CloakMCP secrets-only (5 hooks)
-  Permissions  cloak *, memctl * ✓
-  CLAUDE.md    ~/.claude/        ✓  Toolbox block present
+  Python       3.12.3                  ✓
+  pipx         1.4.3                   ✓
+  Claude Code  2.1.x                   ✓
+  memctl       0.16.x                  ✓  (pipx)
+  cloakmcp     0.9.x                   ✓  (pipx)
+  toolboxctl   0.3.0                   ✓  (pipx)
+  PATH         cloak, memctl           ✓
+  Global hooks ~/.claude/              ✓  CloakMCP secrets-only (5 hooks)
+  Permissions  cloak/memctl/toolboxctl ✓  + Read, Grep
+  CLAUDE.md    ~/.claude/              ✓  Toolbox block present
 ```
 
 ---
@@ -221,6 +221,7 @@ tier = "stm"
 [cloak]
 policy = ".cloak/policy.yaml"
 mode = "enforce"
+fail_closed = false
 ```
 
 **Precedence:** CLI flags > env vars > `.adservio-toolbox.toml` > compiled defaults.
@@ -309,7 +310,7 @@ Or use the GitHub Actions workflow — push a `v*` tag to trigger an automated r
 
 ---
 
-## Operational Guarantees (v0.2.0)
+## Operational Guarantees (v0.3.0)
 
 - **Idempotent installer** — `toolboxctl install` and `toolboxctl init` are safe to run repeatedly.
 - **Deterministic status** — `toolboxctl status` output is stable and pasteable into issues.
@@ -319,6 +320,7 @@ Or use the GitHub Actions workflow — push a `v*` tag to trigger an automated r
 - **Independent release cadence** — memctl, CloakMCP, and the toolbox version independently.
 - **Capability-based installer** — detects Python, pip, venv and selects the best install track; never runs sudo.
 - **Reversible global wiring** — `toolboxctl install --uninstall` cleanly removes hooks, permissions, and CLAUDE.md block.
+- **Document-ready** — `memctl[mcp,docs]` includes Office and PDF support; no extra install steps.
 
 ---
 

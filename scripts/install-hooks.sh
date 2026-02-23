@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-TOTAL_STEPS=6
+TOTAL_STEPS=7
 
 # ---------------------------------------------------------------------------
 # ANSI helpers (TTY-aware, macOS-safe)
@@ -39,6 +39,7 @@ err()   { printf "${_RED}[ERROR]${_R} %s\n" "$1" >&2; }
 ARG_DIR=""
 ARG_HARDENED=false
 ARG_DB_ROOT=".memory"
+ARG_POLICY=""
 ARG_DRY_RUN=false
 ARG_UNINSTALL=false
 
@@ -50,7 +51,8 @@ Install CloakMCP + memctl eco hooks into a project directory.
 
 Options:
   --dir <path>      Target project directory (default: current directory)
-  --hardened        Use CloakMCP hardened profile (adds Bash safety guard)
+  --hardened        Use CloakMCP hardened profile + enterprise policy (26 rules)
+  --policy <path>   Override CloakMCP policy file (default: bundled mcp_policy.yaml)
   --db-root <path>  memctl database root (default: .memory)
   --dry-run         Preview actions without executing (passed through to installers)
   --uninstall       Remove all hooks from the target directory
@@ -77,6 +79,11 @@ while [ $# -gt 0 ]; do
             shift
             if [ $# -eq 0 ]; then err "--db-root requires a path argument"; exit 1; fi
             ARG_DB_ROOT="$1"
+            ;;
+        --policy)
+            shift
+            if [ $# -eq 0 ]; then err "--policy requires a path argument"; exit 1; fi
+            ARG_POLICY="$1"
             ;;
         --dry-run)      ARG_DRY_RUN=true ;;
         --uninstall)    ARG_UNINSTALL=true ;;
@@ -227,16 +234,61 @@ info "Installing CloakMCP hooks ..."
 ok "CloakMCP hooks installed ($CLOAK_PROFILE)"
 
 # ===========================================================================
-# STEP 5: memctl eco hooks (appends to UserPromptSubmit)
+# STEP 5: Anchor CloakMCP policy (version-gated, 0.8.2+)
 # ===========================================================================
 
-step 5 "Install memctl eco hooks"
+step 5 "Anchor CloakMCP policy"
+
+# Resolve policy file name
+if [ -n "$ARG_POLICY" ]; then
+    _POLICY_SOURCE="$ARG_POLICY"
+    info "Using user-specified policy: $_POLICY_SOURCE"
+elif $ARG_HARDENED; then
+    _POLICY_SOURCE="mcp_policy_enterprise.yaml"
+    info "Using enterprise policy (hardened): $_POLICY_SOURCE"
+else
+    _POLICY_SOURCE="mcp_policy.yaml"
+    info "Using bundled default policy: $_POLICY_SOURCE"
+fi
+
+# Check for config override in .adservio-toolbox.toml
+if [ -z "$ARG_POLICY" ] && [ -f "$TARGET_DIR/.adservio-toolbox.toml" ]; then
+    _cfg_policy=$(grep -o 'policy *= *"[^"]*"' "$TARGET_DIR/.adservio-toolbox.toml" 2>/dev/null | head -1 | sed 's/.*"\(.*\)"/\1/')
+    if [ -n "$_cfg_policy" ] && [ "$_cfg_policy" != ".cloak/policy.yaml" ]; then
+        _POLICY_SOURCE="$_cfg_policy"
+        info "Policy override from config: $_POLICY_SOURCE"
+    fi
+fi
+
+# Version gate: cloak policy use requires CloakMCP >= 0.8.2
+_CLOAK_VER=$(cloak --version 2>/dev/null | awk '{print $2}')
+if [ -n "$_CLOAK_VER" ] && [ "$(printf '%s\n' "0.8.2" "$_CLOAK_VER" | sort -V | head -1)" = "0.8.2" ]; then
+    info "CloakMCP $_CLOAK_VER supports policy anchoring"
+    if $ARG_DRY_RUN; then
+        info "[dry-run] Would run: (cd $TARGET_DIR && cloak policy use $_POLICY_SOURCE)"
+    else
+        if (cd "$TARGET_DIR" && cloak policy use "$_POLICY_SOURCE") 2>/dev/null; then
+            ok "Policy anchored: $_POLICY_SOURCE"
+        else
+            warn "cloak policy use failed — set CLOAK_POLICY manually"
+        fi
+    fi
+else
+    info "CloakMCP ${_CLOAK_VER:-not found} < 0.8.2 — policy anchoring not available"
+    info "Fallback: set CLOAK_POLICY=$_POLICY_SOURCE in your shell or .adservio-toolbox.toml"
+fi
+
+# ===========================================================================
+# STEP 6: memctl eco hooks (appends to UserPromptSubmit)
+# ===========================================================================
+
+step 6 "Install memctl eco hooks"
 
 MEMCTL_SCRIPTS=$(memctl scripts-path 2>/dev/null || true)
 
 if [ -z "$MEMCTL_SCRIPTS" ] || [ ! -d "$MEMCTL_SCRIPTS" ]; then
     err "Could not resolve memctl scripts-path."
-    err "Ensure memctl >= 0.12.3 is installed: pip install memctl[mcp]"
+    err "Ensure memctl >= 0.12.3 is installed: pip install memctl[mcp,docs]"
     exit 1
 fi
 
@@ -251,10 +303,10 @@ info "Installing memctl eco hooks ..."
 ok "memctl eco hooks installed"
 
 # ===========================================================================
-# STEP 6: Verify + status
+# STEP 7: Verify + status
 # ===========================================================================
 
-step 6 "Verify installation"
+step 7 "Verify installation"
 
 PASS=0
 FAIL=0
