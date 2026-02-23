@@ -15,8 +15,8 @@
 #   bash install.sh --uninstall        # reverse everything
 #
 # One-liner (with checksum verification):
-#   curl -fsSL https://github.com/Adservio-Dev/AdservioToolbox/releases/download/vX.Y.Z/install.sh -o install.sh \
-#     && curl -fsSL https://github.com/Adservio-Dev/AdservioToolbox/releases/download/vX.Y.Z/SHA256SUMS -o SHA256SUMS \
+#   curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/vX.Y.Z/install.sh -o install.sh \
+#     && curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/vX.Y.Z/SHA256SUMS -o SHA256SUMS \
 #     && (shasum -a 256 -c SHA256SUMS 2>/dev/null || sha256sum -c SHA256SUMS) \
 #     && bash install.sh
 #
@@ -30,6 +30,8 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 TOOLBOX_SPEC="adservio-toolbox"
+TOOLBOX_VERSION="0.2.1"
+GITHUB_REPO="ovitrac/AdservioToolbox"
 MEMCTL_SPEC="memctl[mcp]"
 CLOAKMCP_SPEC="cloakmcp"
 TOTAL_STEPS=7
@@ -585,15 +587,50 @@ else
 fi
 
 # ===========================================================================
-# STEP 5: Install adservio-toolbox
+# STEP 5: Install adservio-toolbox (from GitHub release, not PyPI)
 # ===========================================================================
 
 step 5 "Install adservio-toolbox"
 
-if $USE_PIPX; then
-    pipx_install "$TOOLBOX_SPEC" "adservio-toolbox"
+# Determine version and source for the toolbox
+_tb_version="${ARG_VERSION:-$TOOLBOX_VERSION}"
+_tb_tarball="adservio-toolbox-${_tb_version}.tar.gz"
+_tb_url="https://github.com/${GITHUB_REPO}/releases/download/v${_tb_version}/${_tb_tarball}"
+
+# Resolution order: local file > download from release
+if [ -f "$_tb_tarball" ]; then
+    _tb_source="./$_tb_tarball"
+    info "Using local tarball: $_tb_tarball"
+elif [ -f "$(dirname "$0")/../release/$_tb_tarball" ]; then
+    _tb_source="$(dirname "$0")/../release/$_tb_tarball"
+    info "Using release/ tarball: $_tb_source"
 else
-    pip_fallback_install "$TOOLBOX_SPEC" "adservio-toolbox"
+    _tb_source="$_tb_url"
+    info "Installing from GitHub release: $_tb_url"
+fi
+
+if $USE_PIPX; then
+    if $ARG_UPGRADE; then
+        if pipx_cmd list --short 2>/dev/null | grep -q "^adservio-toolbox "; then
+            info "Upgrading adservio-toolbox …"
+            run pipx_cmd install --force "$_tb_source"
+            ok "adservio-toolbox upgraded"
+        else
+            run pipx_cmd install "$_tb_source"
+            ok "adservio-toolbox installed"
+        fi
+    else
+        if pipx_cmd list --short 2>/dev/null | grep -q "^adservio-toolbox "; then
+            ok "adservio-toolbox already installed (use --upgrade to force)"
+        else
+            run pipx_cmd install "$_tb_source"
+            ok "adservio-toolbox installed"
+        fi
+    fi
+else
+    info "Installing adservio-toolbox via pip --user (fallback) …"
+    run "$PYTHON" -m pip install --user "$_tb_source"
+    ok "adservio-toolbox installed (pip --user)"
 fi
 
 # Verify

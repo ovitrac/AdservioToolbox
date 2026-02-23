@@ -5,6 +5,15 @@ All notable changes to the Adservio Claude Code Toolbox are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-02-23
+
+### Fixed
+
+- **Doctor false negatives**: `toolboxctl doctor` now detects memctl and CloakMCP via CLI (`--version`) instead of `pip show`, fixing false "not installed" reports when tools are in separate pipx venvs
+- **Version mismatch**: `toolbox/__init__.py` now tracks `pyproject.toml` version
+- **Install source**: `install.sh` installs adservio-toolbox from the GitHub release tarball (not PyPI), with local file fallback and proper upgrade logic
+- **GitHub URLs**: Updated repository references from `Adservio-Dev` to `ovitrac`
+
 ## [0.2.0] — 2026-02-23
 
 ### Added

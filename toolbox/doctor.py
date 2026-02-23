@@ -135,7 +135,7 @@ def cmd_doctor(args) -> None:
         has_warn = True
 
     # --- memctl -----------------------------------------------------------
-    memctl_ver = _pip_version("memctl")
+    memctl_ver = _cmd_version("memctl")
     if memctl_ver:
         method = _detect_install_method("memctl")
         checks.append(("memctl", memctl_ver, _OK, f"({method})"))
@@ -144,7 +144,7 @@ def cmd_doctor(args) -> None:
         has_fail = True
 
     # --- CloakMCP ---------------------------------------------------------
-    cloak_ver = _pip_version("cloakmcp")
+    cloak_ver = _cmd_version("cloak")
     if cloak_ver:
         method = _detect_install_method("cloak")
         checks.append(("CloakMCP", cloak_ver, _OK, f"({method})"))
