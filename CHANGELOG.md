@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-02-24
+
+### Changed
+
+- **`install.ps1` rewritten**: full-featured Windows PowerShell installer (was skeleton)
+  - `py -3` launcher support (standard Windows Python launcher)
+  - PEP 668 detection with winget/scoop/chocolatey guidance
+  - GitHub release tarball install for adservio-toolbox (matches bash installer)
+  - Track A (pipx) / Track B (pip --user) with proper fallback
+  - `__TOOLBOX_VERSION__` placeholder stamped by `build-release.sh`
+  - `-Version`, `-Upgrade`, `-Uninstall`, `-SkipGlobal`, `-DryRun` flags
+- `build-release.sh` now stamps version into both `install.sh` and `install.ps1`
+
 ## [0.4.1] — 2026-02-24
 
 ### Changed
@@ -25,9 +38,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- **PEP 668 detection**: `install.sh` detects externally-managed Python (Ubuntu 23.04+, Debian 12+, Fedora 38+)
-  and guides the user to install pipx from the system package manager (`sudo apt install pipx`) instead of
-  failing with a cryptic pip error. Track B (pip --user) also exits with clear guidance when PEP 668 is active.
+- **PEP 668 detection**: both `install.sh` and `install.ps1` detect externally-managed Python
+  (Ubuntu 23.04+, Debian 12+, Fedora 38+) and guide the user to install pipx from the system
+  package manager instead of failing with a cryptic pip error.
+- **`install.ps1` rewritten**: full-featured Windows PowerShell installer (was skeleton)
+  - `py -3` launcher support (standard Windows Python launcher)
+  - PEP 668 detection with winget/scoop/chocolatey guidance
+  - GitHub release tarball install for adservio-toolbox (matches bash installer)
+  - Track A (pipx) / Track B (pip --user) with proper fallback
+  - `__TOOLBOX_VERSION__` placeholder stamped by build-release.sh
+  - `-Version`, `-Upgrade`, `-Uninstall`, `-SkipGlobal`, `-DryRun` flags
 
 ## [0.4.0] — 2026-02-24
 

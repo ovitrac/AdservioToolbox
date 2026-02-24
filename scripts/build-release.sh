@@ -295,8 +295,12 @@ else
 fi
 ok "Copied install.sh (version stamped: $VERSION)"
 
-run cp "$REPO_ROOT/scripts/install.ps1" "$RELEASE_DIR/install.ps1"
-ok "Copied install.ps1"
+if ! $ARG_DRY_RUN; then
+    sed "s/__TOOLBOX_VERSION__/${VERSION}/g" "$REPO_ROOT/scripts/install.ps1" > "$RELEASE_DIR/install.ps1"
+else
+    run cp "$REPO_ROOT/scripts/install.ps1" "$RELEASE_DIR/install.ps1"
+fi
+ok "Copied install.ps1 (version stamped: $VERSION)"
 
 # Create zip archive (convenience for Windows users)
 if $HAS_ZIP && ! $ARG_DRY_RUN; then
