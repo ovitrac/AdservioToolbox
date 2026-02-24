@@ -91,6 +91,80 @@ def _detect_install_method(cmd: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Policy lint (doctrine enforcement)
+# ---------------------------------------------------------------------------
+
+
+def _lint_policy_overlap(cwd: Path) -> list[tuple[str, str, str, str]]:
+    """Detect doctrine violations in CLAUDE.md layers.
+
+    Returns a list of (name, value, status, note) tuples for each finding.
+    """
+    from toolbox.global_wiring import (
+        CLAUDE_MD,
+        _LEGACY_BLOCK_BEGIN,
+        _LEGACY_BLOCK_END,
+    )
+
+    findings: list[tuple[str, str, str, str]] = []
+
+    # --- L1: Legacy global markers ----------------------------------------
+    if CLAUDE_MD.exists():
+        global_content = CLAUDE_MD.read_text(encoding="utf-8")
+        if _LEGACY_BLOCK_BEGIN in global_content and _LEGACY_BLOCK_END in global_content:
+            findings.append((
+                "Lint L1",
+                "legacy global markers",
+                _WARN,
+                "old ADSERVIO_TOOLBOX BEGIN/END — run 'toolboxctl update --global'",
+            ))
+
+        # --- L2: memctl workflow guidance in global block -----------------
+        for keyword in ("memory_recall", "memory_inspect"):
+            if keyword in global_content:
+                findings.append((
+                    "Lint L2",
+                    f"'{keyword}' in global CLAUDE.md",
+                    _WARN,
+                    "memctl guidance belongs in .claude/eco/ECO.md, not global block",
+                ))
+                break  # one finding is enough
+
+    # --- L3: CloakMCP rules restated in project block ---------------------
+    project_claude_md = cwd / "CLAUDE.md"
+    if project_claude_md.exists():
+        project_content = project_claude_md.read_text(encoding="utf-8")
+        # Check for CloakMCP restatement within the project block markers
+        from toolbox.project_wiring import _PROJECT_BLOCK_BEGIN, _PROJECT_BLOCK_END
+        if _PROJECT_BLOCK_BEGIN in project_content and _PROJECT_BLOCK_END in project_content:
+            block_start = project_content.index(_PROJECT_BLOCK_BEGIN)
+            block_end = project_content.index(_PROJECT_BLOCK_END)
+            block_text = project_content[block_start:block_end]
+            if "TAG-xxxx" in block_text and "redacted" in block_text.lower():
+                findings.append((
+                    "Lint L3",
+                    "CloakMCP restatement in project block",
+                    _WARN,
+                    "project block should reference global, not restate CloakMCP rules",
+                ))
+
+    # --- L4: ECO.md referenced but doesn't exist --------------------------
+    if project_claude_md.exists():
+        project_content = project_claude_md.read_text(encoding="utf-8")
+        if "ECO.md" in project_content:
+            eco_md = cwd / ".claude" / "eco" / "ECO.md"
+            if not eco_md.exists():
+                findings.append((
+                    "Lint L4",
+                    "ECO.md referenced but missing",
+                    _WARN,
+                    ".claude/eco/ECO.md not found — eco mode not installed",
+                ))
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -103,6 +177,8 @@ def cmd_doctor(args) -> None:
         check_global_hooks,
         check_global_permissions,
     )
+
+    strict: bool = getattr(args, "strict", False)
 
     checks: list[tuple[str, str, str, str]] = []  # (name, value, status, note)
     has_warn = False
@@ -194,7 +270,10 @@ def cmd_doctor(args) -> None:
     if perms_state["installed"]:
         checks.append((
             "Permissions",
-            ", ".join(p.split("(")[1].rstrip(")") for p in perms_state["permissions"]),
+            ", ".join(
+                p.split("(")[1].rstrip(")") if "(" in p else p
+                for p in perms_state["permissions"]
+            ),
             _OK,
             "",
         ))
@@ -211,6 +290,14 @@ def cmd_doctor(args) -> None:
     md_state = check_global_claude_md()
     if md_state["installed"]:
         checks.append(("CLAUDE.md", "~/.claude/", _OK, "toolbox block present"))
+    elif md_state.get("legacy_markers"):
+        checks.append((
+            "CLAUDE.md",
+            "~/.claude/",
+            _WARN,
+            "legacy markers — run 'toolboxctl update --global'",
+        ))
+        has_warn = True
     elif md_state["file_exists"]:
         checks.append((
             "CLAUDE.md",
@@ -230,6 +317,16 @@ def cmd_doctor(args) -> None:
 
     # --- Platform (informational) -----------------------------------------
     checks.append(("Platform", platform.platform(), _OK, ""))
+
+    # --- Policy lint (doctrine enforcement) --------------------------------
+    lint_results = _lint_policy_overlap(Path.cwd())
+    for finding in lint_results:
+        status = _FAIL if strict else finding[2]
+        checks.append((finding[0], finding[1], status, finding[3]))
+        if status == _FAIL:
+            has_fail = True
+        elif status == _WARN:
+            has_warn = True
 
     # --- Print results ----------------------------------------------------
     info("Adservio Toolbox — Doctor\n")

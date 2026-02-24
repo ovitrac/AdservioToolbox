@@ -26,34 +26,42 @@ SETTINGS_LOCAL_JSON = CLAUDE_DIR / "settings.local.json"
 CLAUDE_MD = CLAUDE_DIR / "CLAUDE.md"
 
 GLOBAL_PERMISSIONS = [
+    "Bash(cloak:*)",
+    "Bash(memctl:*)",
+    "Bash(toolboxctl:*)",
+    "Read",
+    "Grep",
+]
+
+# Old format entries to replace on upgrade (space-glob → colon-glob)
+_STALE_PERMISSIONS = [
     "Bash(cloak *)",
     "Bash(memctl *)",
     "Bash(toolboxctl *)",
-    "Read",
-    "Grep",
 ]
 
 # Marker used to identify toolbox-managed hook entries
 HOOK_SOURCE_TAG = "adservio-toolbox"
 
 # Delimiters for the managed block in ~/.claude/CLAUDE.md
-_BLOCK_BEGIN = "<!-- ADSERVIO_TOOLBOX BEGIN — managed by toolboxctl, do not edit manually -->"
-_BLOCK_END = "<!-- ADSERVIO_TOOLBOX END -->"
+_BLOCK_BEGIN = "<!-- ADSERVIO_TOOLBOX GLOBAL BEGIN — managed by toolboxctl, do not edit manually -->"
+_BLOCK_END = "<!-- ADSERVIO_TOOLBOX GLOBAL END -->"
+
+# Legacy markers (pre-doctrine) — detected but NOT auto-migrated
+_LEGACY_BLOCK_BEGIN = "<!-- ADSERVIO_TOOLBOX BEGIN — managed by toolboxctl, do not edit manually -->"
+_LEGACY_BLOCK_END = "<!-- ADSERVIO_TOOLBOX END -->"
 
 _CLAUDE_MD_BLOCK = """\
-## Adservio Toolbox Conventions
+## Adservio Toolbox — Global Conventions
 
 - **CloakMCP** is active globally. Secrets are redacted to `TAG-xxxx` placeholders
   at session start and restored at session end.
   Do not attempt to bypass, decode, or reconstruct original secret values.
 - When `TAG-xxxx` placeholders appear in files, they are CloakMCP redaction tags.
   Treat them as opaque identifiers. Do not modify or remove them.
+- Do not paste raw secrets into prompts. CloakMCP guards will block them.
 - `cloak`, `memctl`, and `toolboxctl` CLI commands are pre-authorized (no confirmation needed).
-- For projects with eco mode enabled, use the memctl MCP server tools
-  (`memory_recall`, `memory_inspect`) instead of sequential file reads.
-  These are MCP tools — do NOT run them as CLI commands.
-  CLI equivalent: `memctl search "<query>"` or `memctl show <id>`.
-  See `.claude/eco/ECO.md` for the strategy.
+- Eco mode may be enabled per project for token-efficient retrieval in large repos.
 - Run `toolboxctl doctor` to verify the toolbox installation at any time.
 """
 
@@ -105,21 +113,35 @@ def _cloak_scripts_path() -> Path | None:
 def install_global_permissions() -> bool:
     """Inject cloak/memctl/toolboxctl Bash permissions into settings.local.json.
 
+    Also removes stale space-glob entries (``Bash(cmd *)``) left by older
+    versions and replaces them with colon-glob format (``Bash(cmd:*)``).
+
     Returns True if changes were made.
     """
     settings = _read_json(SETTINGS_LOCAL_JSON)
     allow = settings.setdefault("permissions", {}).setdefault("allow", [])
 
+    changed = False
+
+    # Remove stale space-glob entries from older toolbox versions
+    for stale in _STALE_PERMISSIONS:
+        if stale in allow:
+            allow.remove(stale)
+            changed = True
+
+    # Add current permissions
     added = []
     for perm in GLOBAL_PERMISSIONS:
         if perm not in allow:
             allow.append(perm)
             added.append(perm)
 
-    if added:
+    if added or changed:
         _write_json(SETTINGS_LOCAL_JSON, settings)
         for perm in added:
             info(f"Global permission added: {perm}")
+        if changed and not added:
+            info("Global permissions upgraded (format fix).")
         return True
 
     info("Global permissions already configured.")
@@ -129,6 +151,7 @@ def install_global_permissions() -> bool:
 def uninstall_global_permissions() -> bool:
     """Remove toolbox-managed permissions from ~/.claude/settings.local.json.
 
+    Removes both current (colon-glob) and stale (space-glob) entries.
     Returns True if changes were made.
     """
     if not SETTINGS_LOCAL_JSON.exists():
@@ -139,8 +162,9 @@ def uninstall_global_permissions() -> bool:
     if not allow:
         return False
 
+    remove_set = set(GLOBAL_PERMISSIONS) | set(_STALE_PERMISSIONS)
     original_len = len(allow)
-    filtered = [p for p in allow if p not in GLOBAL_PERMISSIONS]
+    filtered = [p for p in allow if p not in remove_set]
 
     if len(filtered) == original_len:
         return False
@@ -288,12 +312,24 @@ def uninstall_global_hooks() -> bool:
 # ---------------------------------------------------------------------------
 
 
+def check_legacy_global_markers() -> dict:
+    """Detect pre-doctrine (legacy) markers in ~/.claude/CLAUDE.md."""
+    result = {"has_legacy": False, "has_new": False}
+    if not CLAUDE_MD.exists():
+        return result
+    content = CLAUDE_MD.read_text(encoding="utf-8")
+    result["has_legacy"] = _LEGACY_BLOCK_BEGIN in content and _LEGACY_BLOCK_END in content
+    result["has_new"] = _BLOCK_BEGIN in content and _BLOCK_END in content
+    return result
+
+
 def install_global_claude_md() -> bool:
     """Write or update the toolbox block in ~/.claude/CLAUDE.md.
 
     - Creates the file if missing.
     - Appends the block if the file exists but has no markers.
     - Updates the block in-place if markers already exist.
+    - Warns if legacy (pre-doctrine) markers are found without new markers.
 
     Returns True if changes were made.
     """
@@ -307,7 +343,17 @@ def install_global_claude_md() -> bool:
 
     content = CLAUDE_MD.read_text(encoding="utf-8")
 
-    if _BLOCK_BEGIN in content and _BLOCK_END in content:
+    # Detect legacy markers
+    has_legacy = _LEGACY_BLOCK_BEGIN in content and _LEGACY_BLOCK_END in content
+    has_new = _BLOCK_BEGIN in content and _BLOCK_END in content
+
+    if has_legacy and not has_new:
+        warn("Legacy (pre-doctrine) toolbox markers found in CLAUDE.md.")
+        warn("Run 'toolboxctl update --global' after removing the old block,")
+        warn("or manually delete the old block between the legacy markers.")
+        return False
+
+    if has_new:
         # Replace existing block
         before = content[: content.index(_BLOCK_BEGIN)]
         after = content[content.index(_BLOCK_END) + len(_BLOCK_END) :]
@@ -332,35 +378,42 @@ def install_global_claude_md() -> bool:
 def uninstall_global_claude_md() -> bool:
     """Remove the toolbox block from ~/.claude/CLAUDE.md.
 
+    Handles both new (doctrine) and legacy (pre-doctrine) marker sets.
     Returns True if changes were made.
     """
     if not CLAUDE_MD.exists():
         return False
 
     content = CLAUDE_MD.read_text(encoding="utf-8")
+    changed = False
 
-    if _BLOCK_BEGIN not in content:
-        return False
+    # Try new markers first, then legacy
+    for begin, end in [
+        (_BLOCK_BEGIN, _BLOCK_END),
+        (_LEGACY_BLOCK_BEGIN, _LEGACY_BLOCK_END),
+    ]:
+        if begin not in content:
+            continue
+        if end not in content:
+            warn(f"Found BEGIN marker but no END marker in {CLAUDE_MD} — skipping.")
+            continue
 
-    if _BLOCK_END not in content:
-        warn(f"Found BEGIN marker but no END marker in {CLAUDE_MD} — skipping.")
-        return False
+        before = content[: content.index(begin)]
+        after = content[content.index(end) + len(end) :]
 
-    before = content[: content.index(_BLOCK_BEGIN)]
-    after = content[content.index(_BLOCK_END) + len(_BLOCK_END) :]
+        # Clean up extra blank lines around the removed block
+        content = before.rstrip("\n") + after.lstrip("\n")
+        if content and not content.endswith("\n"):
+            content += "\n"
+        if not content.strip():
+            content = ""
+        changed = True
 
-    # Clean up extra blank lines around the removed block
-    new_content = before.rstrip("\n") + after.lstrip("\n")
-    if new_content and not new_content.endswith("\n"):
-        new_content += "\n"
-    if not new_content.strip():
-        # File would be empty — remove it only if we created it
-        # (safer to leave an empty file than delete user's CLAUDE.md)
-        new_content = ""
+    if changed:
+        CLAUDE_MD.write_text(content, encoding="utf-8")
+        info("Removed toolbox block from CLAUDE.md.")
 
-    CLAUDE_MD.write_text(new_content, encoding="utf-8")
-    info("Removed toolbox block from CLAUDE.md.")
-    return True
+    return changed
 
 
 # ---------------------------------------------------------------------------
@@ -420,7 +473,7 @@ def check_global_hooks() -> dict:
 
 def check_global_permissions() -> dict:
     """Return a dict describing the state of global permissions."""
-    result = {"installed": False, "permissions": []}
+    result = {"installed": False, "permissions": [], "needs_upgrade": False}
     if not SETTINGS_LOCAL_JSON.exists():
         return result
 
@@ -428,18 +481,23 @@ def check_global_permissions() -> dict:
     allow = settings.get("permissions", {}).get("allow", [])
 
     found = [p for p in GLOBAL_PERMISSIONS if p in allow]
+    stale = [p for p in _STALE_PERMISSIONS if p in allow]
     result["installed"] = len(found) == len(GLOBAL_PERMISSIONS)
     result["permissions"] = found
+    result["needs_upgrade"] = bool(stale)
     return result
 
 
 def check_global_claude_md() -> dict:
     """Return a dict describing the state of the CLAUDE.md block."""
-    result = {"installed": False, "file_exists": False}
+    result = {"installed": False, "file_exists": False, "legacy_markers": False}
     if not CLAUDE_MD.exists():
         return result
 
     result["file_exists"] = True
     content = CLAUDE_MD.read_text(encoding="utf-8")
     result["installed"] = _BLOCK_BEGIN in content and _BLOCK_END in content
+    result["legacy_markers"] = (
+        _LEGACY_BLOCK_BEGIN in content and _LEGACY_BLOCK_END in content
+    )
     return result

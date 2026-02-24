@@ -5,6 +5,90 @@ All notable changes to the Adservio Claude Code Toolbox are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **CLAUDE.md layer doctrine**: GLOBAL=safety seatbelt, PROJECT=overlay, PLAYGROUND=profile tag
+  - Global markers renamed: `ADSERVIO_TOOLBOX BEGIN` → `ADSERVIO_TOOLBOX GLOBAL BEGIN`
+  - Legacy markers: detected and warned, no auto-migration
+  - Removed memctl MCP guidance (`memory_recall`, `memory_inspect`) from all default CLAUDE.md blocks
+  - Project block references GLOBAL for CloakMCP rules (no restatement)
+  - Added "Do not paste raw secrets" to global block
+- **`toolboxctl init --profile {minimal,dev,playground}`** — profile-driven project wiring
+  - `dev` profile creates `.claude/PROJECT.md` (build/test/lint/format template)
+  - `playground` profile adds `CHALLENGE.md` pointer in CLAUDE.md block
+  - Profile recorded in `.toolbox/manifest.json` for update/refresh
+- **`toolboxctl doctor --strict`** / `--ci` — lint warnings become errors (exit 2)
+  - Policy lint checks: L1 (legacy markers), L2 (memctl in global), L3 (CloakMCP restatement), L4 (ECO.md missing)
+- **`toolboxctl update --global`** / `--project` — scoped CLAUDE.md block refresh (no package upgrade)
+  - `--global`: refreshes `~/.claude/CLAUDE.md` block only
+  - `--project`: refreshes project `CLAUDE.md` block only (reads profile from manifest)
+- `scripts/playground.sh` now uses `--profile playground` for init invocations
+- `toolboxctl deinit` now removes `.claude/PROJECT.md` (dev profile artifact)
+
+### Added
+
+- **`toolboxctl update`** — auto-upgrade memctl, CloakMCP, and toolbox (pipx/pip auto-detected)
+  - `--check`: show outdated packages without upgrading (compares installed vs PyPI latest)
+  - `--quiet`: minimal output for launcher scripts
+  - `--json`: machine-readable output
+  - Refreshes project templates (CLAUDE.md block, manifest) after upgrade if `.toolbox/manifest.json` exists
+- **`toolboxctl deinit`** — reversible project wiring removal
+  - Removes: slash commands, MCP servers, permissions, config, CLAUDE.md block, manifest
+  - Preserves: `.memory/`, hooks, eco hooks, user CLAUDE.md content outside markers
+  - Uses `.toolbox/state.json` for reliable file-level reversal
+  - `--force`: skip confirmation prompt
+- **`toolboxctl init` now injects toolbox block into project CLAUDE.md**
+  - Marker-based: `<!-- ADSERVIO_TOOLBOX PROJECT BEGIN -->` / `<!-- END -->`
+  - Non-destructive: appends to existing files, replaces between markers on re-run
+  - Creates `.toolbox/manifest.json` (tracked) + `.toolbox/state.json` (untracked)
+  - `.gitignore` updated idempotently (adds `settings.local.json`, `state.json`)
+- **New module** `toolbox/project_wiring.py`:
+  - Manages project-level CLAUDE.md block injection/removal
+  - `.toolbox/manifest.json` — authoritative "this repo is initialized" marker
+  - `.toolbox/state.json` — reversible state tracking for deinit
+  - `.gitignore` idempotent update
+  - `check_project_wiring()` for doctor/status integration
+- **New module** `toolbox/update.py`:
+  - Install method detection reuses `doctor.py:_detect_install_method()`
+  - PyPI version check via `pip index versions` (pip 21.2+)
+- `toolboxctl rescue --with-memory` — read-only memory health advisory
+  - Integrates `memctl doctor` (10 checks, v0.18.0+): integrity, WAL, schema, FTS5, policy, MCP, eco
+  - Falls back to `memctl status/stats` for older versions
+  - DB existence, eco mode, item counts, FTS state, consolidation debt
+- `toolboxctl rescue --memory-only` — memory-only diagnostic mode (skip secret recovery)
+- `toolboxctl rescue --json` — combined JSON output (cloak situation + memory advisory)
+- `helpers.run()` — new `cwd` parameter for subprocess working directory
+
+### Changed
+
+- `scripts/playground.sh` step 6 delegates CLAUDE.md creation to `toolboxctl init` (eliminates content duplication)
+- `scripts/test-e2e.sh` launcher now includes `toolboxctl update --quiet` before launching Claude
+- `scripts/test-e2e.sh` verification now checks `.toolbox/manifest.json`
+- Permission format: `Bash(cmd *)` -> `Bash(cmd:*)` (colon-glob, matches Claude Code)
+- **`toolboxctl rescue`** — guided secret recovery after CloakMCP session crash
+  - Diagnostic-first workflow: diagnose → report → confirm → recover → verify
+  - `--dir DIR`: target a specific project directory
+  - `--from-backup [ID]`: backup-based recovery (omit ID to list available backups)
+  - `--dry-run`: preview mode (no changes)
+  - `--force`: skip confirmation prompts
+  - Severity model: clean / stale / tags / critical
+  - Fallback detection when `cloak status --json` is unavailable
+- **`scripts/playground.sh`** — standalone per-project setup script (curl-able)
+  - One-command setup: init + CloakMCP hooks + memctl eco hooks + starter CLAUDE.md
+  - `--dir DIR`: target directory
+  - `--hardened`: CloakMCP enterprise profile (26 rules)
+  - `--skip-hooks`: init + CLAUDE.md only (no hook installation)
+  - `--teardown`: remove playground wiring (preserves `.memory/` and user config)
+  - `--force`: overwrite existing files
+  - `--dry-run`: preview all actions
+  - Enforces correct hook ordering (CloakMCP first, memctl second)
+  - Curl-able: no repository clone needed
+- `toolboxctl rescue` exit code contract: 0=clean/recovered, 1=dir missing, 2=cloak missing, 3=verification failed after remediation
+- Incident report artifact (`.cloak-rescue-report.json`): timestamp, severity, actions taken, verify result — local-only, ISO/SOC-compatible evidence
+- Playground contract documentation: toolbox-owned files, teardown guarantees, hook ordering, hardened profile semantics
+
 ## [0.3.0] — 2026-02-23
 
 ### Added

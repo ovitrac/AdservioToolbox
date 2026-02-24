@@ -51,7 +51,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # --- init --------------------------------------------------------------
-    p_init = sub.add_parser("init", help="Wire .claude/ commands and create config")
+    p_init = sub.add_parser("init", help="Wire .claude/ commands, config, CLAUDE.md block, and manifest")
     p_init.add_argument(
         "--force",
         action="store_true",
@@ -63,12 +63,60 @@ def _build_parser() -> argparse.ArgumentParser:
         default="fr",
         help="FTS tokenizer language (default: fr)",
     )
+    p_init.add_argument(
+        "--profile",
+        choices=["minimal", "dev", "playground"],
+        default="minimal",
+        help="Wiring profile (default: minimal)",
+    )
+
+    # --- deinit ------------------------------------------------------------
+    p_deinit = sub.add_parser("deinit", help="Remove toolbox wiring (preserves .memory/, hooks, user content)")
+    p_deinit.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip confirmation prompt",
+    )
+
+    # --- update ------------------------------------------------------------
+    p_update = sub.add_parser("update", help="Upgrade memctl, CloakMCP, and toolbox via pipx/pip")
+    p_update.add_argument(
+        "--check",
+        action="store_true",
+        help="Show outdated packages without upgrading",
+    )
+    p_update.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Minimal output (for launcher scripts)",
+    )
+    p_update.add_argument(
+        "--json",
+        action="store_true",
+        help="Machine-readable output",
+    )
+    p_update.add_argument(
+        "--global", dest="scope_global", action="store_true",
+        help="Refresh only the global CLAUDE.md block",
+    )
+    p_update.add_argument(
+        "--project", dest="scope_project", action="store_true",
+        help="Refresh only the project CLAUDE.md block",
+    )
 
     # --- status ------------------------------------------------------------
     sub.add_parser("status", help="Show deterministic status report")
 
     # --- doctor ------------------------------------------------------------
-    sub.add_parser("doctor", help="Diagnose toolbox installation health")
+    p_doctor = sub.add_parser("doctor", help="Diagnose toolbox installation health")
+    p_doctor.add_argument(
+        "--strict", action="store_true",
+        help="Treat policy lint warnings as errors (exit 2)",
+    )
+    p_doctor.add_argument(
+        "--ci", action="store_true", dest="strict",
+        help="Alias for --strict",
+    )
 
     # --- eco ---------------------------------------------------------------
     p_eco = sub.add_parser("eco", help="Toggle eco mode")
@@ -96,6 +144,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Remove existing playground",
     )
 
+    # --- rescue ------------------------------------------------------------
+    p_rescue = sub.add_parser("rescue", help="Guided secret recovery (CloakMCP)")
+    p_rescue.add_argument("--dir", default=".", help="Target directory (default: .)")
+    p_rescue.add_argument(
+        "--from-backup",
+        nargs="?",
+        const="list",
+        default=None,
+        metavar="BACKUP_ID",
+        help="Recover from backup (omit ID to list available backups)",
+    )
+    p_rescue.add_argument("--dry-run", action="store_true", help="Preview without changes")
+    p_rescue.add_argument("--force", action="store_true", help="Skip confirmation prompts")
+    p_rescue.add_argument(
+        "--with-memory",
+        action="store_true",
+        help="Include memory health advisory (non-destructive)",
+    )
+    p_rescue.add_argument(
+        "--memory-only",
+        action="store_true",
+        help="Run only memory health checks (skip secret recovery)",
+    )
+    p_rescue.add_argument("--json", action="store_true", help="Output combined diagnostic as JSON to stdout")
+
     return parser
 
 
@@ -111,6 +184,12 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "init":
         from toolbox.init import cmd_init
         cmd_init(args)
+    elif args.command == "deinit":
+        from toolbox.init import cmd_deinit
+        cmd_deinit(args)
+    elif args.command == "update":
+        from toolbox.update import cmd_update
+        cmd_update(args)
     elif args.command == "status":
         from toolbox.status import cmd_status
         cmd_status(args)
@@ -126,6 +205,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "playground":
         from toolbox.playground import cmd_playground
         cmd_playground(args)
+    elif args.command == "rescue":
+        from toolbox.rescue import cmd_rescue
+        cmd_rescue(args)
 
 
 if __name__ == "__main__":

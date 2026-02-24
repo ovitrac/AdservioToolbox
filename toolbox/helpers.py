@@ -82,6 +82,7 @@ def run(
     capture: bool = True,
     check: bool = True,
     quiet: bool = False,
+    cwd: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a command via subprocess.
 
@@ -95,6 +96,8 @@ def run(
         Raise on non-zero exit (default True).
     quiet : bool
         Suppress the info message about the command being run.
+    cwd : str or None
+        Working directory for the subprocess (default: inherit).
     """
     if not quiet:
         info(f"run: {' '.join(cmd)}")
@@ -103,6 +106,7 @@ def run(
         text=True,
         capture_output=capture,
         check=check,
+        cwd=cwd,
     )
 
 
@@ -155,3 +159,24 @@ def print_table(
 
     for r in data:
         print(_fmt(r), file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Interactive prompts
+# ---------------------------------------------------------------------------
+
+
+def ask_yes_no(prompt: str, default: bool = False) -> bool:
+    """Ask a yes/no question on stderr, return boolean.
+
+    Returns *default* on empty input, EOF, or KeyboardInterrupt.
+    """
+    suffix = "[Y/n]" if default else "[y/N]"
+    try:
+        answer = input(f"{_yellow('?')} {prompt} {suffix} ").strip().lower()
+        if not answer:
+            return default
+        return answer in ("y", "yes")
+    except (EOFError, KeyboardInterrupt):
+        print(file=sys.stderr)
+        return default

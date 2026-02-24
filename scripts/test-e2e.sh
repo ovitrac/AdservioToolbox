@@ -523,7 +523,7 @@ CHALLENGE
 
     # --- toolboxctl init (wires commands + MCP + config) ---
     info "Running toolboxctl init in demo project ..."
-    (cd "$DEMO_DIR" && toolboxctl init)
+    (cd "$DEMO_DIR" && toolboxctl init --profile playground)
     ok "toolboxctl init completed"
 fi
 
@@ -639,6 +639,7 @@ check_file ".gitignore exists"          "$DEMO_DIR/.gitignore"
 check_file "Config file exists"         "$DEMO_DIR/.adservio-toolbox.toml"
 check_dir  ".claude/commands/ exists"   "$DEMO_DIR/.claude/commands"
 check_file "settings.json exists"       "$DEMO_DIR/.claude/settings.json"
+check_file "Manifest exists"            "$DEMO_DIR/.toolbox/manifest.json"
 
 # Slash commands
 for cmd in cheat eco how tldr why; do
@@ -704,7 +705,10 @@ for _cmd in toolboxctl memctl cloak; do
 done
 
 cd "\$DEMO_DIR"
-eval "\$(toolboxctl env)"
+eval "\$(toolboxctl env 2>/dev/null)"
+
+# Ensure tools are up to date (non-fatal)
+toolboxctl update --quiet 2>/dev/null || true
 
 if [ "\$0" != "\${BASH_SOURCE[0]:-}" ]; then
     # Sourced — just set up the environment

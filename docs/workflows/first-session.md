@@ -119,7 +119,7 @@ Global CloakMCP hooks are already active (from Step 1). For per-project hooks:
 
 ```bash
 bash "$(cloak scripts-path)/install_claude.sh"                       # secrets-only (5 hooks)
-bash "$(cloak scripts-path)/install_claude.sh" --profile hardened     # + Bash safety guard (6 hooks)
+bash "$(cloak scripts-path)/install_claude.sh" --profile hardened     # + Bash safety + read guard (7 hooks)
 
 # To uninstall later:
 bash "$(cloak scripts-path)/install_claude.sh" --uninstall

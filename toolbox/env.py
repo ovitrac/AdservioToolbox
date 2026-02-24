@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import shlex
+import sys
 
 from toolbox.config import config_to_env, load_config
 from toolbox.helpers import info
@@ -32,4 +33,6 @@ def cmd_env(args) -> None:
         # stdout — sourceable shell exports
         for key, value in sorted(env_map.items()):
             print(f"export {key}={shlex.quote(value)}")
-        info("Paste or eval the lines above to inject into your shell.")
+        # Only show the hint when stdout is a TTY (not piped into eval)
+        if sys.stdout.isatty():
+            info("Paste or eval the lines above to inject into your shell.")

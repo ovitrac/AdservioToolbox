@@ -21,21 +21,29 @@ cloak vault-import --dir D --input F  # import vault from backup
 
 cloak policy validate --policy P      # validate policy file
 cloak policy show --policy P          # show merged policy (after inheritance)
+cloak policy use mcp_policy.yaml      # switch to default policy (10 rules)
+cloak policy use mcp_policy_enterprise.yaml  # switch to enterprise policy (26 rules)
+cloak policy use /path/to/custom.yaml # switch to custom policy
+cloak policy use --show               # show active policy
 
 cloak hook <event> --dir D            # handle Claude Code hook event
 cloak recover --dir D                 # recover stale session state
 cloak sanitize-stdin --policy P       # sanitize text from stdin → stdout
 ```
 
-**Installer scripts** (bundled in PyPI wheel, locate via `cloak scripts-path`):
+**Hook profiles** (bundled in PyPI wheel, locate via `cloak scripts-path`):
 ```
-bash "$(cloak scripts-path)/install_claude.sh"                    # install hooks (secrets-only profile)
-bash "$(cloak scripts-path)/install_claude.sh" --profile hardened # + Bash safety guard
+bash "$(cloak scripts-path)/install_claude.sh"                    # secrets-only (5 hooks)
+bash "$(cloak scripts-path)/install_claude.sh" --profile hardened # + Bash safety + read guard (7 hooks)
 bash "$(cloak scripts-path)/install_claude.sh" --method symlink   # use symlinks instead of copy
 bash "$(cloak scripts-path)/install_claude.sh" --dry-run          # preview changes
 bash "$(cloak scripts-path)/install_claude.sh" --uninstall        # remove all hooks
 bash "$(cloak scripts-path)/install_claude.sh" --uninstall --dry-run  # preview uninstall
 ```
+
+**Two security dimensions:**
+- **Hook profile** — what Claude is prevented from doing: `secrets-only` (5 hooks) or `hardened` (7 hooks)
+- **Policy profile** — what counts as a secret: `default` (10 rules) or `enterprise` (26 rules) or custom
 
 **Policy:** `.cloak/policy.yaml` (YAML with `detection` rules)
 **Rule types:** `regex`, `entropy`, `ipv4`, `ipv6`, `url`
