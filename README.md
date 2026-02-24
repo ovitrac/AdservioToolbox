@@ -1,12 +1,25 @@
+<div align="center">
+
 # Adservio Claude Code Toolbox
 
-**Install once. Every session, automatically:**
+### Install once. Every session, secrets are vaulted and memory persists.
 
-- **CloakMCP** redacts secrets before Claude sees your files
-- **memctl** gives Claude persistent memory across sessions
-- **Nothing leaves your machine** — fully local, no cloud
+**Orchestrates [CloakMCP](https://pypi.org/project/cloakmcp/) + [memctl](https://pypi.org/project/memctl/) for Claude Code — fully local, no cloud.**
 
-The Adservio Toolbox wires [CloakMCP](https://pypi.org/project/cloakmcp/) (secret protection) and [memctl](https://pypi.org/project/memctl/) (project memory) into Claude Code so they work automatically — no manual steps each session. Secrets are vaulted before the AI reads anything, restored when the session ends, and knowledge persists between sessions.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.4.3-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
+[![Challenges](https://img.shields.io/badge/challenges-7%2F7%20passing-brightgreen.svg)](#try-it--end-to-end-demo)
+[![Components](https://img.shields.io/badge/components-CloakMCP%20%2B%20memctl-blueviolet.svg)](#architecture)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+[Quick Start](QUICKSTART.md) • [Architecture](#architecture) • [Install](#quick-install) • [Subcommands](#subcommands) • [Try It](#try-it--end-to-end-demo) • [Configuration](#configuration) • [Recovery](#secret-recovery) • [Changelog](CHANGELOG.md)
+
+</div>
+
+---
+
+CloakMCP redacts secrets before Claude sees your files. memctl gives Claude persistent memory across sessions. Nothing leaves your machine.
 
 No vendoring. No source copying. No hidden coupling. Each component retains its independent lifecycle — the toolbox orchestrates them via configuration and Claude Code hooks.
 
@@ -143,10 +156,10 @@ curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/latest/download/i
   && bash install.sh
 ```
 
-To pin a specific version (e.g., `v0.4.2`):
+To pin a specific version (e.g., `v0.4.3`):
 
 ```bash
-curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.4.2/install.sh | bash
+curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.4.3/install.sh | bash
 ```
 
 **Prerequisites:** bash, Python 3.10+ (system Python is fine).
@@ -387,21 +400,41 @@ See `/cheat 3` or `docs/cheat/L3.md` for the full list of installer scripts, pro
 
 ---
 
-## End-to-End Testing
+## Try It — End-to-End Demo
 
-The toolbox includes a full integration test and a standalone hook installer:
+**The best way to test the installation and discover how the toolbox works.**
+
+The e2e script builds a self-contained demo project with fake secrets, CloakMCP hooks,
+memctl memory, and a 7-challenge interactive stress test:
 
 ```bash
-# Full e2e: clean venv → install → demo project → hooks → 17 checks
+# 1. Build the demo (clean venv → install → demo project → hooks → 18 checks)
 bash scripts/test-e2e.sh
 
-# Launch the demo (activates venv, cd's into demo project, starts Claude)
-bash .e2e/launch.sh
+# 2. Launch Claude Code inside the demo project
+bash .e2e/default/launch.sh
 
-# Inside Claude Code, run the interactive challenge:
-# "read CHALLENGE.md and execute all 7 challenges"
+# 3. Inside the Claude session, type:
+#      execute CHALLENGE.md
+#    Claude will walk you through all 7 challenges interactively.
+```
 
-# Standalone hook installer for any project
+Here is what a typical run looks like (7/7 PASS on a fresh install):
+
+| # | Challenge | Result | Notes |
+|---|-----------|--------|-------|
+| 1 | Eco mode activation | PASS | memctl status confirms active, 2 STM items |
+| 2 | Secret redaction | PASS | All 3 variables show `TAG-*` placeholders. No raw values visible |
+| 3 | Memory recall | PASS | `memctl search` returns redacted inventory |
+| 4 | Slash commands | PASS | `/cheat L1`, `/tldr cloakmcp`, `/why eco` all produce document-backed output |
+| 5 | Write guard | PASS | `cloak-guard-write` blocked an AKIA\* key — rule `aws_access_keys`, severity critical |
+| 6 | Audit trail | PASS | 4 events logged: 2× `session_pack`, 2× `guard_deny` with rule + severity |
+| 7 | Backup exfiltration | PASS (no leak) | No raw secrets found. `.cloak-backups/` absent |
+
+Every safety layer exercised in a live session — no documentation to read first.
+
+```bash
+# Standalone hook installer (for your own projects)
 bash scripts/install-hooks.sh --dir /path/to/project
 bash scripts/install-hooks.sh --dir /path/to/project --hardened
 bash scripts/install-hooks.sh --dir /path/to/project --uninstall
@@ -410,8 +443,6 @@ bash scripts/install-hooks.sh --dir /path/to/project --uninstall
 bash scripts/test-e2e.sh --clean
 ```
 
-The 7 challenges exercise: eco mode activation, secret redaction, memory recall, slash commands, write guard, audit trail, and backup exfiltration testing.
-
 ---
 
 ## Release Pipeline
@@ -419,8 +450,8 @@ The 7 challenges exercise: eco mode activation, secret redaction, memory recall,
 Releases are automated via GitHub Actions. Pushing a `v*` tag triggers the workflow:
 
 ```bash
-git tag -a v0.4.2 -m "Release 0.5.0"
-git push origin v0.4.2
+git tag -a v0.4.3 -m "Release 0.4.3"
+git push origin v0.4.3
 # → GitHub Actions builds and publishes the release automatically
 ```
 

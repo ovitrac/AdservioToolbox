@@ -9,6 +9,7 @@ from pathlib import Path
 
 from toolbox import __version__
 from toolbox.config import CONFIG_FILENAME, find_config, load_config
+from toolbox.eco import _read_sentinel
 from toolbox.helpers import info, print_table, run
 
 # ---------------------------------------------------------------------------
@@ -53,7 +54,11 @@ def cmd_status(args) -> None:
     memctl_ver = _pkg_version("memctl") or "not installed"
     cloak_ver = _pkg_version("cloakmcp") or "not installed"
     git_ok = "yes" if shutil.which("git") else "no"
-    eco_state = "on" if cfg.get("eco", {}).get("enabled_global") else "off"
+    sentinel_state = _read_sentinel(cwd)
+    if sentinel_state is not None:
+        eco_state = "on" if sentinel_state else "off"
+    else:
+        eco_state = "on" if cfg.get("eco", {}).get("enabled_global") else "off"
     commands = _check_commands(cwd)
     commands_str = ", ".join(f"/{c}" for c in commands) if commands else "none"
 

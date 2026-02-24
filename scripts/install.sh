@@ -539,6 +539,23 @@ else
     warn "Falling back to Track B (pip --user) — less isolation."
 fi
 
+# --- 1c: PEP 668 early exit ---
+# On externally-managed Python, both `pip install --user pipx` and
+# `pip install --user <package>` are blocked.  The ONLY path forward
+# is a system-packaged pipx.  Detect this before wasting time on Track B.
+if $IS_EXTERNALLY_MANAGED; then
+    if command -v pipx >/dev/null 2>&1; then
+        ok "PEP 668 detected, but pipx is already installed — proceeding"
+    else
+        echo ""
+        err "This Python is externally managed (PEP 668)."
+        err "All pip install --user commands are blocked by the system."
+        echo ""
+        print_pipx_system_install_hint
+        exit 2
+    fi
+fi
+
 # ===========================================================================
 # STEP 2: Select install track
 # ===========================================================================
@@ -549,8 +566,8 @@ USE_PIPX=false
 PIPX_CMD=""
 INSTALL_TRACK=""
 
-if $HAS_VENV; then
-    # Track A: pip + venv → try pipx
+if $HAS_VENV || command -v pipx >/dev/null 2>&1; then
+    # Track A: try pipx (already available, or can be installed via pip)
     if ensure_pipx; then
         USE_PIPX=true
         INSTALL_TRACK="A"
@@ -561,19 +578,12 @@ if $HAS_VENV; then
         INSTALL_TRACK="B"
     fi
 else
-    # Track B: pip only (no venv)
+    # Track B: pip only (no venv, no pipx)
     INSTALL_TRACK="B"
     info "Track B: pip --user (no venv available for pipx)"
 fi
 
 if [ "$INSTALL_TRACK" = "B" ]; then
-    # PEP 668: pip --user is blocked on externally-managed Python
-    if $IS_EXTERNALLY_MANAGED; then
-        echo ""
-        err "Cannot proceed: pip --user is blocked by PEP 668 and pipx is not available."
-        print_pipx_system_install_hint
-        exit 2
-    fi
     ok "Track B: pip --user"
     warn "Less isolation than pipx. Consider installing python3-venv for Track A."
     warn "Binaries go to ~/.local/bin — ensure it is on your PATH."

@@ -36,6 +36,8 @@ _PROJECT_PERMISSIONS = [
     "Bash(cloak:*)",
     "Bash(memctl:*)",
     "Bash(toolboxctl:*)",
+    "Read",
+    "Grep",
 ]
 
 # Old format entries to clean up on re-init

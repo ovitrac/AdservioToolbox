@@ -417,9 +417,30 @@ if ($HasVenv) {
     Write-Warn "Reinstall Python and ensure the 'py launcher' and 'pip' options are checked."
 }
 
+# PEP 668 early exit: if externally managed and no pipx, stop now.
 if ($IsExternallyManaged) {
-    Write-Warn "PEP 668: This Python is externally managed."
-    Write-Info "The installer will try pipx from PATH or suggest system install."
+    if (Test-Command "pipx") {
+        Write-Ok "PEP 668 detected, but pipx is already installed - proceeding"
+    } else {
+        Write-Host ""
+        Write-Err "This Python is externally managed (PEP 668)."
+        Write-Err "All pip install --user commands are blocked by the system."
+        Write-Host ""
+        Write-Info "Install pipx from your system package manager instead:"
+        Write-Host ""
+        Write-Host "  winget install pipx                     " -ForegroundColor White -NoNewline
+        Write-Host "# Windows Package Manager (recommended)"
+        Write-Host "  scoop install pipx                      " -ForegroundColor White -NoNewline
+        Write-Host "# Scoop"
+        Write-Host "  choco install pipx                      " -ForegroundColor White -NoNewline
+        Write-Host "# Chocolatey"
+        Write-Host ""
+        Write-Info "Then: pipx ensurepath"
+        Write-Info "Then re-run this script. pipx will install tools in isolated"
+        Write-Info "virtual environments - no conflict with system packages."
+        Write-Host ""
+        exit 2
+    }
 }
 
 # ===========================================================================
@@ -438,26 +459,10 @@ if ($HasVenv -or (Test-Command "pipx")) {
         $InstallTrack = "A"
         Write-Ok "Track A: pipx (isolated environments)"
     } else {
-        if ($IsExternallyManaged) {
-            Write-Err "Cannot proceed: pip --user is blocked (PEP 668) and pipx is not available."
-            Write-Host ""
-            Write-Info "Install pipx first, then re-run this script:"
-            Write-Host "  winget install pipx && pipx ensurepath" -ForegroundColor White
-            Write-Host ""
-            exit 2
-        }
         Write-Warn "Falling back to Track B (pip --user)."
         $InstallTrack = "B"
     }
 } else {
-    if ($IsExternallyManaged) {
-        Write-Err "Cannot proceed: pip --user is blocked (PEP 668) and pipx is not available."
-        Write-Host ""
-        Write-Info "Install pipx first, then re-run this script:"
-        Write-Host "  winget install pipx && pipx ensurepath" -ForegroundColor White
-        Write-Host ""
-        exit 2
-    }
     $InstallTrack = "B"
     Write-Info "Track B: pip --user (no venv available for pipx)"
 }

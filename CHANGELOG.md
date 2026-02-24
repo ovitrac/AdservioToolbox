@@ -7,6 +7,30 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-02-24
+
+### Added
+
+- **`QUICKSTART.md`**: standalone quick start guide (install → init → verify → demo → daily usage)
+- **README badges**: version, license, Python, challenges, components, code style (shields.io)
+- **README navigation menu**: quick jump to Architecture, Install, Subcommands, Try It, Configuration, Recovery
+
+### Changed
+
+- **README "Try It" section**: renamed from "End-to-End Testing", 3-step workflow
+  (build → launch → `execute CHALLENGE.md`), 7/7 challenge results table
+- **Eco mode state sync**: `toolboxctl eco` now reads/writes the `.claude/eco/.disabled` sentinel
+  (memctl convention) in addition to `.adservio-toolbox.toml`, fixing the mismatch where
+  `memctl eco on` activated eco but `toolboxctl eco` still reported "off"
+- `toolboxctl status` reads eco state from memctl sentinel when available (consistent with `toolboxctl eco`)
+
+### Fixed
+
+- **Project permissions**: `toolboxctl init` now injects `Read` and `Grep` into project-level
+  `.claude/settings.local.json` — slash commands (`/cheat`, `/tldr`) and doc searches no longer
+  trigger permission prompts in freshly initialized projects
+- Release pipeline example: fixed `"Release 0.5.0"` → `"Release 0.4.2"` typo in README
+
 ## [0.4.2] — 2026-02-24
 
 ### Changed
