@@ -7,6 +7,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-02-24
+
 ### Changed
 
 - **CLAUDE.md layer doctrine**: GLOBAL=safety seatbelt, PROJECT=overlay, PLAYGROUND=profile tag
