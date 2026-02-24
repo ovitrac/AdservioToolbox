@@ -7,6 +7,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-02-24
+
+### Changed
+
+- **Single source of truth for version**: `pyproject.toml` is the sole authority
+  - `toolbox/__init__.py` reads version from `importlib.metadata` at runtime (fallback for editable installs)
+  - `scripts/install.sh` uses `__TOOLBOX_VERSION__` placeholder, stamped by `build-release.sh` at build time
+  - No more hardcoded version strings to keep in sync
+- **CloakMCP security documentation**: 6 documentation gaps fixed
+  - Hardened hook profile correctly documented as 7 hooks (was 6), including `cloak-guard-read.sh`
+  - Full detection rule inventories: default (10 rules) and enterprise (26 rules) with per-rule tables
+  - Bash safety guard: 13 blocked command patterns documented
+  - Profile selection guidance, upgrade path (secrets-only → hardened), terminology cleanup
+  - Two independent security dimensions: hook profiles × policy profiles
+- **README**: non-expert accessible overview, honest assessment section, trade-off boundaries
+
+### Fixed
+
+- **PEP 668 detection**: `install.sh` detects externally-managed Python (Ubuntu 23.04+, Debian 12+, Fedora 38+)
+  and guides the user to install pipx from the system package manager (`sudo apt install pipx`) instead of
+  failing with a cryptic pip error. Track B (pip --user) also exits with clear guidance when PEP 668 is active.
+
 ## [0.4.0] — 2026-02-24
 
 ### Changed

@@ -143,10 +143,10 @@ curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/latest/download/i
   && bash install.sh
 ```
 
-To pin a specific version (e.g., `v0.3.0`):
+To pin a specific version (e.g., `v0.4.1`):
 
 ```bash
-curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.3.0/install.sh | bash
+curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.4.1/install.sh | bash
 ```
 
 **Prerequisites:** bash, Python 3.10+ (system Python is fine).
@@ -419,8 +419,8 @@ The 7 challenges exercise: eco mode activation, secret redaction, memory recall,
 Releases are automated via GitHub Actions. Pushing a `v*` tag triggers the workflow:
 
 ```bash
-git tag -a v0.3.0 -m "Release 0.3.0"
-git push origin v0.3.0
+git tag -a v0.4.1 -m "Release 0.5.0"
+git push origin v0.4.1
 # → GitHub Actions builds and publishes the release automatically
 ```
 

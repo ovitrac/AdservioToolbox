@@ -286,9 +286,14 @@ fi
 
 step 5 "Collect release assets"
 
-# Copy install scripts
-run cp "$REPO_ROOT/scripts/install.sh" "$RELEASE_DIR/install.sh"
-ok "Copied install.sh"
+# Copy install scripts (stamp version placeholder → actual version)
+if ! $ARG_DRY_RUN; then
+    sed "s/__TOOLBOX_VERSION__/${VERSION}/g" "$REPO_ROOT/scripts/install.sh" > "$RELEASE_DIR/install.sh"
+    chmod +x "$RELEASE_DIR/install.sh"
+else
+    run cp "$REPO_ROOT/scripts/install.sh" "$RELEASE_DIR/install.sh"
+fi
+ok "Copied install.sh (version stamped: $VERSION)"
 
 run cp "$REPO_ROOT/scripts/install.ps1" "$RELEASE_DIR/install.ps1"
 ok "Copied install.ps1"

@@ -30,7 +30,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 TOOLBOX_SPEC="adservio-toolbox"
-TOOLBOX_VERSION="0.3.0"
+TOOLBOX_VERSION="__TOOLBOX_VERSION__"
 GITHUB_REPO="ovitrac/AdservioToolbox"
 MEMCTL_SPEC="memctl[mcp,docs]"
 CLOAKMCP_SPEC="cloakmcp"
@@ -300,6 +300,7 @@ find_python() {
 
 HAS_PIP=false
 HAS_VENV=false
+IS_EXTERNALLY_MANAGED=false
 
 probe_capabilities() {
     # Check pip module
@@ -311,6 +312,49 @@ probe_capabilities() {
     if "$PYTHON" -c "import venv" >/dev/null 2>&1; then
         HAS_VENV=true
     fi
+
+    # Detect PEP 668 externally-managed Python (Ubuntu 23.04+, Debian 12+, Fedora 38+)
+    # These systems block `pip install` without --break-system-packages.
+    local sysconfig_dir
+    sysconfig_dir=$("$PYTHON" -c "import sysconfig; print(sysconfig.get_path('stdlib'))" 2>/dev/null) || true
+    if [ -n "$sysconfig_dir" ] && [ -f "${sysconfig_dir}/EXTERNALLY-MANAGED" ]; then
+        IS_EXTERNALLY_MANAGED=true
+    fi
+}
+
+print_pipx_system_install_hint() {
+    local distro
+    distro=$(detect_distro)
+    echo ""
+    warn "This Python is externally managed (PEP 668)."
+    warn "pip install --user is blocked by the system to protect system packages."
+    echo ""
+    info "Install pipx from your system package manager instead:"
+    echo ""
+    case "$distro" in
+        debian)
+            printf "  ${_B}sudo apt install -y pipx && pipx ensurepath${_R}\n"
+            ;;
+        rhel)
+            printf "  ${_B}sudo dnf install -y pipx && pipx ensurepath${_R}\n"
+            ;;
+        arch)
+            printf "  ${_B}sudo pacman -S python-pipx && pipx ensurepath${_R}\n"
+            ;;
+        suse)
+            printf "  ${_B}sudo zypper install -y python3-pipx && pipx ensurepath${_R}\n"
+            ;;
+        macos)
+            printf "  ${_B}brew install pipx && pipx ensurepath${_R}\n"
+            ;;
+        *)
+            info "  See https://pipx.pypa.io/stable/installation/"
+            ;;
+    esac
+    echo ""
+    info "Then re-run this script. pipx will install tools in isolated"
+    info "virtual environments — no conflict with system packages."
+    echo ""
 }
 
 # ---------------------------------------------------------------------------
@@ -322,6 +366,13 @@ ensure_pipx() {
     if command -v pipx >/dev/null 2>&1; then
         ok "pipx found: $(pipx --version 2>/dev/null || echo 'available')"
         return 0
+    fi
+
+    # PEP 668: externally-managed Python blocks pip install --user
+    # Skip the pip attempt entirely and guide the user to their package manager.
+    if $IS_EXTERNALLY_MANAGED; then
+        print_pipx_system_install_hint
+        return 1
     fi
 
     info "pipx not found — installing via pip …"
@@ -346,31 +397,8 @@ ensure_pipx() {
         fi
     fi
 
-    # pip install --user failed (corporate lockdown, externally-managed, etc.)
-    warn "Could not install pipx via pip."
-    echo ""
-    info "You can install pipx manually:"
-    echo ""
-    local distro
-    distro=$(detect_distro)
-    case "$distro" in
-        debian)
-            info "  sudo apt-get install -y pipx && pipx ensurepath"
-            ;;
-        rhel)
-            info "  sudo dnf install -y pipx && pipx ensurepath"
-            ;;
-        macos)
-            info "  brew install pipx && pipx ensurepath"
-            ;;
-        arch)
-            info "  sudo pacman -S python-pipx && pipx ensurepath"
-            ;;
-        *)
-            info "  See https://pipx.pypa.io/stable/installation/"
-            ;;
-    esac
-    echo ""
+    # pip install --user failed (corporate lockdown, other reasons)
+    print_pipx_system_install_hint
     return 1
 }
 
@@ -539,6 +567,13 @@ else
 fi
 
 if [ "$INSTALL_TRACK" = "B" ]; then
+    # PEP 668: pip --user is blocked on externally-managed Python
+    if $IS_EXTERNALLY_MANAGED; then
+        echo ""
+        err "Cannot proceed: pip --user is blocked by PEP 668 and pipx is not available."
+        print_pipx_system_install_hint
+        exit 2
+    fi
     ok "Track B: pip --user"
     warn "Less isolation than pipx. Consider installing python3-venv for Track A."
     warn "Binaries go to ~/.local/bin — ensure it is on your PATH."
