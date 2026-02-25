@@ -7,6 +7,25 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-02-25
+
+### Added
+
+- **F-T1: CLAUDE.md eco block** — `toolboxctl eco on` injects a 4-line behavioral block
+  (`<!-- ADSERVIO_TOOLBOX ECO BEGIN/END -->`) into the project CLAUDE.md, guiding Claude to
+  use `memory_inspect` and `memory_recall` before native search tools on large indexed repos.
+  Removed on `eco off`. Lives at CLAUDE.md level (attention level 3).
+- **F-T2: eco-nudge PreToolUse hook** — `toolboxctl eco on` registers memctl's `eco-nudge.sh`
+  as a global PreToolUse hook for Grep|Glob. The hook fires a one-line stderr reminder when
+  eco is active, DB has ≥200 items, and the search looks like exploration (not a narrow lookup).
+  Never blocks — always exits 0. Unregistered on `eco off`.
+
+### Changed
+
+- `toolbox/eco.py` rewritten: `cmd_eco()` now orchestrates four sync surfaces on toggle
+  (TOML config, sentinel file, CLAUDE.md eco block, global eco-nudge hook)
+- Requires memctl ≥0.18.2 for eco-nudge template availability
+
 ## [0.4.3] — 2026-02-24
 
 ### Added

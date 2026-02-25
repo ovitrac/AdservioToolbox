@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.4.3-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
+[![Version](https://img.shields.io/badge/version-0.4.4-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
 [![Challenges](https://img.shields.io/badge/challenges-7%2F7%20passing-brightgreen.svg)](#try-it--end-to-end-demo)
 [![Components](https://img.shields.io/badge/components-CloakMCP%20%2B%20memctl-blueviolet.svg)](#architecture)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -156,10 +156,10 @@ curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/latest/download/i
   && bash install.sh
 ```
 
-To pin a specific version (e.g., `v0.4.3`):
+To pin a specific version (e.g., `v0.4.4`):
 
 ```bash
-curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.4.3/install.sh | bash
+curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.4.4/install.sh | bash
 ```
 
 **Prerequisites:** bash, Python 3.10+ (system Python is fine).
@@ -450,8 +450,8 @@ bash scripts/test-e2e.sh --clean
 Releases are automated via GitHub Actions. Pushing a `v*` tag triggers the workflow:
 
 ```bash
-git tag -a v0.4.3 -m "Release 0.4.3"
-git push origin v0.4.3
+git tag -a v0.4.4 -m "Release 0.4.4"
+git push origin v0.4.4
 # → GitHub Actions builds and publishes the release automatically
 ```
 
