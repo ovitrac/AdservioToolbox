@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.5] — 2026-02-25
+
+### Changed
+
+- **Escalation ladder**: added Level 0 (`memctl push --source`) for cold-start ingest
+  in `docs/cheat/L2.md`. Addresses field feedback where Claude defaulted to native
+  `find`/`ls` on un-indexed codebases because the ladder assumed memory was already populated.
+- **README badges**: added e2e test count badge (18 passing), version bump to 0.4.5
+
 ## [0.4.4] — 2026-02-25
 
 ### Added
