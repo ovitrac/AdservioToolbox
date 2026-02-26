@@ -7,6 +7,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-02-26
+
+### Added
+
+- **Windows hook compatibility** (`toolbox/_platform.py`): OS-aware hook wiring selects
+  `.py` entrypoints on Windows, `.sh` on POSIX. CloakMCP and memctl hooks resolve
+  automatically via `resolve_hook_command()`. Git Bash fallback when no `.py` available.
+- **Cross-platform installer** (`scripts/install.py`): pure Python stdlib-only bootstrap
+  that works on Windows, macOS, and Linux without Git Bash or PowerShell expertise.
+  Track A (pipx), Track B (pip --user), PEP 668 detection, GitHub tarball resolution.
+- **Doctor: hook compatibility check**: `toolboxctl doctor --strict` reports whether all
+  registered hooks have platform-compatible entrypoints. On Windows, missing `.py` hooks
+  are reported as FAIL; on POSIX shown as informational under `--strict`.
+
+### Changed
+
+- `toolbox/global_wiring.py`: hook resolution now uses `resolve_hook_command()` —
+  transparent on POSIX (returns `.sh` path unchanged), selects `.py` on Windows.
+- `toolbox/eco.py`: `_find_eco_nudge_script()` now applies OS-aware resolution.
+- Doctor check count: 12 checks under `--strict` (was 11).
+
 ## [0.4.5] — 2026-02-25
 
 ### Changed

@@ -302,12 +302,21 @@ else
 fi
 ok "Copied install.ps1 (version stamped: $VERSION)"
 
+if ! $ARG_DRY_RUN; then
+    sed "s/__TOOLBOX_VERSION__/${VERSION}/g" "$REPO_ROOT/scripts/install.py" > "$RELEASE_DIR/install.py"
+    chmod +x "$RELEASE_DIR/install.py"
+else
+    run cp "$REPO_ROOT/scripts/install.py" "$RELEASE_DIR/install.py"
+fi
+ok "Copied install.py (version stamped: $VERSION)"
+
 # Create zip archive (convenience for Windows users)
 if $HAS_ZIP && ! $ARG_DRY_RUN; then
     (cd "$REPO_ROOT" && zip -r "$RELEASE_DIR/${SDIST_NAME}.zip" \
         toolbox/ \
         scripts/install.sh \
         scripts/install.ps1 \
+        scripts/install.py \
         pyproject.toml \
         README.md \
         CHANGELOG.md \

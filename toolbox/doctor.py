@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from toolbox import __version__
+from toolbox._platform import IS_WINDOWS, resolve_hook_command
 from toolbox.helpers import _green, _red, _yellow, info, print_table, run, warn
 
 # ---------------------------------------------------------------------------
@@ -264,6 +265,54 @@ def cmd_doctor(args) -> None:
             "toolboxctl install --global",
         ))
         has_warn = True
+
+    # --- Hook platform compatibility (Windows) ----------------------------
+    if IS_WINDOWS or strict:
+        from toolbox.global_wiring import SETTINGS_JSON
+        import json
+
+        hook_compat_ok = True
+        hook_compat_detail = ""
+
+        if SETTINGS_JSON.exists():
+            try:
+                with open(SETTINGS_JSON, encoding="utf-8") as fh:
+                    all_hooks = json.load(fh).get("hooks", {})
+                sh_only = []
+                for event, entries in all_hooks.items():
+                    for entry in entries:
+                        if not isinstance(entry, dict):
+                            continue
+                        for h in entry.get("hooks", []):
+                            cmd = h.get("command", "")
+                            if cmd.endswith(".sh"):
+                                resolved = resolve_hook_command(cmd)
+                                if resolved == cmd and IS_WINDOWS:
+                                    sh_only.append(Path(cmd).name)
+                if sh_only:
+                    hook_compat_ok = False
+                    hook_compat_detail = ", ".join(sorted(set(sh_only)))
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        if hook_compat_ok:
+            checks.append((
+                "Hook compat",
+                "windows" if IS_WINDOWS else "posix",
+                _OK,
+                "all hooks have platform-compatible entrypoints",
+            ))
+        else:
+            checks.append((
+                "Hook compat",
+                f"{hook_compat_detail}",
+                _WARN if not IS_WINDOWS else _FAIL,
+                ".sh only — no .py entrypoint (upgrade CloakMCP/memctl)",
+            ))
+            if IS_WINDOWS:
+                has_fail = True
+            else:
+                has_warn = True
 
     # --- Permissions ------------------------------------------------------
     perms_state = check_global_permissions()

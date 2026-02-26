@@ -14,6 +14,7 @@ import json
 import shutil
 from pathlib import Path
 
+from toolbox._platform import resolve_hook_command
 from toolbox.helpers import error, info, run, warn
 
 # ---------------------------------------------------------------------------
@@ -212,13 +213,13 @@ def install_global_hooks() -> bool:
         # Fallback: scripts may be flat (older CloakMCP)
         hooks_dir = scripts
 
-    # Resolve absolute paths to hook scripts
+    # Resolve absolute paths to hook scripts (OS-aware)
     def _hook(name: str) -> str:
         for candidate in [hooks_dir / name, scripts / name]:
             if candidate.exists():
-                return str(candidate)
+                return resolve_hook_command(str(candidate))
         # Not found — use relative (will work if cloak is on PATH)
-        return f".claude/hooks/{name}"
+        return resolve_hook_command(f".claude/hooks/{name}")
 
     # secrets-only profile: 5 hooks
     toolbox_hooks = {

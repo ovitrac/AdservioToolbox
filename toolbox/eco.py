@@ -18,6 +18,7 @@ import json
 import shutil
 from pathlib import Path
 
+from toolbox._platform import resolve_hook_command
 from toolbox.config import CONFIG_FILENAME, find_config, load_config, write_config
 from toolbox.helpers import die, info, warn
 
@@ -153,7 +154,11 @@ _GLOBAL_SETTINGS = Path.home() / ".claude" / "settings.json"
 
 
 def _find_eco_nudge_script() -> str | None:
-    """Locate eco-nudge.sh from the memctl package (pipx or system install)."""
+    """Locate eco-nudge hook from the memctl package (pipx or system install).
+
+    On Windows, prefers the .py entrypoint if available; on POSIX returns the
+    .sh script.  Uses :func:`resolve_hook_command` for OS-aware selection.
+    """
     memctl_bin = shutil.which("memctl")
     if not memctl_bin:
         return None
@@ -167,9 +172,9 @@ def _find_eco_nudge_script() -> str | None:
         return None
 
     scripts_dir = Path(result.stdout.strip())
-    nudge = scripts_dir.parent / "templates" / "hooks" / "eco-nudge.sh"
-    if nudge.exists():
-        return str(nudge.resolve())
+    nudge_sh = scripts_dir.parent / "templates" / "hooks" / "eco-nudge.sh"
+    if nudge_sh.exists():
+        return resolve_hook_command(str(nudge_sh.resolve()))
     return None
 
 
