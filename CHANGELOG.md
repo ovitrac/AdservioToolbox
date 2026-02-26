@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-02-26
+
+### Added
+
+- **Installing Python guide** (`docs/INSTALLING_PYTHON.md`): comprehensive guide covering
+  why Python (not Node, not Docker), minimum version rationale (3.10+), multiple Python
+  coexistence, version selection (`py -3.12`, `--python` flag, PATH ordering), platform
+  matrix (Windows/macOS/Linux), user-mode options, uv escape hatch.
+- **README**: link to Installing Python guide in Quick Install section, doctor badge (12/12)
+
 ## [0.5.0] — 2026-02-26
 
 ### Added
@@ -20,6 +30,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Doctor: hook compatibility check**: `toolboxctl doctor --strict` reports whether all
   registered hooks have platform-compatible entrypoints. On Windows, missing `.py` hooks
   are reported as FAIL; on POSIX shown as informational under `--strict`.
+- **Installing Python guide** (`docs/INSTALLING_PYTHON.md`): comprehensive guide covering
+  platform matrix, Python coexistence, version selection, user-mode options, uv escape
+  hatch, and rationale for Python-only runtime (no Node, no Docker).
 
 ### Changed
 

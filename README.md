@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.5.0-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
+[![Version](https://img.shields.io/badge/version-0.5.1-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
 [![Tests](https://img.shields.io/badge/e2e-18%20passing-brightgreen.svg)](#try-it--end-to-end-demo)
 [![Doctor](https://img.shields.io/badge/doctor-12%2F12%20passing-brightgreen.svg)](#verification)
 [![Challenges](https://img.shields.io/badge/challenges-7%2F7%20passing-brightgreen.svg)](#try-it--end-to-end-demo)
@@ -164,7 +164,8 @@ To pin a specific version (e.g., `v0.4.5`):
 curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/download/v0.4.5/install.sh | bash
 ```
 
-**Prerequisites:** bash, Python 3.10+ (system Python is fine).
+**Prerequisites:** Python 3.10+ (system Python is fine).
+**Need Python?** See [Installing Python](docs/INSTALLING_PYTHON.md) for platform-specific instructions, user-mode options, and the uv escape hatch.
 
 ### What the installer does
 

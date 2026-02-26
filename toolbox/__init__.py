@@ -5,4 +5,4 @@ from importlib.metadata import version as _pkg_version
 try:
     __version__ = _pkg_version("adservio-toolbox")
 except Exception:
-    __version__ = "0.5.0"  # fallback for editable installs without metadata
+    __version__ = "0.5.1"  # fallback for editable installs without metadata
