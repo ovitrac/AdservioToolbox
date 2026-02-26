@@ -197,6 +197,8 @@ print_python_install_hint() {
             ;;
     esac
     echo ""
+    info "Detailed guide: https://github.com/ovitrac/AdservioToolbox/blob/main/docs/INSTALLING_PYTHON.md"
+    echo ""
     info "Then re-run this script."
 }
 
@@ -361,35 +363,49 @@ print_pipx_system_install_hint() {
 # pipx helpers
 # ---------------------------------------------------------------------------
 
+probe_pipx_health() {
+    # Returns 0 if pipx is installed and functional, 1 otherwise.
+    # Guards against stale shims, broken venvs, or removed Python interpreters.
+    command -v pipx >/dev/null 2>&1 || return 1
+    pipx --version >/dev/null 2>&1 || return 1
+    return 0
+}
+
 ensure_pipx() {
-    # Pre-condition: HAS_PIP=true and HAS_VENV=true
-    if command -v pipx >/dev/null 2>&1; then
+    # Try to get a working pipx. Called only when PIPX_READY is false
+    # and pip is available (PEP 668 not blocking).
+    if probe_pipx_health; then
         ok "pipx found: $(pipx --version 2>/dev/null || echo 'available')"
         return 0
     fi
 
+    # pipx on PATH but broken?
+    if command -v pipx >/dev/null 2>&1; then
+        warn "pipx found on PATH but not functional — attempting reinstall via pip"
+    else
+        info "pipx not found — installing via pip …"
+    fi
+
     # PEP 668: externally-managed Python blocks pip install --user
-    # Skip the pip attempt entirely and guide the user to their package manager.
+    # (defense-in-depth — caller should have caught this already)
     if $IS_EXTERNALLY_MANAGED; then
         print_pipx_system_install_hint
         return 1
     fi
 
-    info "pipx not found — installing via pip …"
-
     # Try pip install --user (no sudo)
     if run "$PYTHON" -m pip install --user pipx 2>/dev/null; then
         # Ensure ~/.local/bin is on PATH
         run "$PYTHON" -m pipx ensurepath 2>/dev/null || true
-        # Re-check after ensurepath (may need shell reload)
-        if command -v pipx >/dev/null 2>&1; then
+        # Re-check with functional probe
+        if probe_pipx_health; then
             ok "pipx installed"
             return 0
         fi
         # pipx installed but not on PATH yet — try with full path
         local pipx_path
         pipx_path="$HOME/.local/bin/pipx"
-        if [ -x "$pipx_path" ]; then
+        if [ -x "$pipx_path" ] && "$pipx_path" --version >/dev/null 2>&1; then
             ok "pipx installed at $pipx_path (add ~/.local/bin to PATH)"
             # Use full path for this session
             PIPX_CMD="$pipx_path"
@@ -398,7 +414,7 @@ ensure_pipx() {
     fi
 
     # pip install --user failed (corporate lockdown, other reasons)
-    print_pipx_system_install_hint
+    warn "Could not bootstrap pipx via pip."
     return 1
 }
 
@@ -514,7 +530,7 @@ echo ""
 # STEP 1: Check Python + capabilities
 # ===========================================================================
 
-step 1 "Check Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ and capabilities"
+step 1 "Check Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ and package tools"
 
 # --- 1a: Find Python ---
 if ! find_python; then
@@ -523,34 +539,43 @@ if ! find_python; then
 fi
 ok "Python $PYTHON_VER ($PYTHON)"
 
-# --- 1b: Probe pip and venv ---
-probe_capabilities
-
-if ! $HAS_PIP; then
-    print_pip_install_hint
-    exit 2
-fi
-ok "pip available"
-
-if $HAS_VENV; then
-    ok "venv available"
-else
-    print_venv_install_hint
-    warn "Falling back to Track B (pip --user) — less isolation."
+# --- 1b: Check pipx health first (pipx-first policy) ---
+# If pipx is already present and functional, pip is not needed at all.
+# Modern distros (Ubuntu 24.04+, Debian 12+, Fedora 38+) often ship pipx
+# from the system package manager without shipping pip.
+PIPX_READY=false
+if probe_pipx_health; then
+    PIPX_READY=true
+    ok "pipx functional ($(pipx --version 2>/dev/null))"
 fi
 
-# --- 1c: PEP 668 early exit ---
-# On externally-managed Python, both `pip install --user pipx` and
-# `pip install --user <package>` are blocked.  The ONLY path forward
-# is a system-packaged pipx.  Detect this before wasting time on Track B.
-if $IS_EXTERNALLY_MANAGED; then
-    if command -v pipx >/dev/null 2>&1; then
-        ok "PEP 668 detected, but pipx is already installed — proceeding"
+# --- 1c: Probe pip/venv/PEP668 only if pipx is not ready ---
+if ! $PIPX_READY; then
+    probe_capabilities
+
+    if $HAS_PIP; then
+        ok "pip available (for pipx bootstrap)"
+    fi
+    if $HAS_VENV; then
+        ok "venv available"
     else
+        warn "venv not available — pipx bootstrap may need it"
+    fi
+
+    # No pipx AND no pip → only path is OS package manager
+    if ! $HAS_PIP; then
         echo ""
-        err "This Python is externally managed (PEP 668)."
-        err "All pip install --user commands are blocked by the system."
+        err "Neither pipx nor pip is available."
+        err "pipx is required to install tools in isolated environments."
+        print_pipx_system_install_hint
+        exit 2
+    fi
+
+    # pip available but PEP 668 blocks pip install --user → can't bootstrap pipx
+    if $IS_EXTERNALLY_MANAGED; then
         echo ""
+        err "pip is available but this Python is externally managed (PEP 668)."
+        err "Cannot bootstrap pipx via pip — the system blocks pip install --user."
         print_pipx_system_install_hint
         exit 2
     fi
@@ -566,26 +591,24 @@ USE_PIPX=false
 PIPX_CMD=""
 INSTALL_TRACK=""
 
-if $HAS_VENV || command -v pipx >/dev/null 2>&1; then
-    # Track A: try pipx (already available, or can be installed via pip)
-    if ensure_pipx; then
-        USE_PIPX=true
-        INSTALL_TRACK="A"
-        ok "Track A: pipx (isolated environments)"
-    else
-        # pipx install failed — fall back to Track B
-        warn "Falling back to Track B (pip --user)."
-        INSTALL_TRACK="B"
-    fi
+if $PIPX_READY; then
+    # pipx already verified in Step 1 — use it directly (no pip needed)
+    USE_PIPX=true
+    INSTALL_TRACK="A"
+    ok "Track A: pipx (pre-installed, isolated environments)"
+elif ensure_pipx; then
+    # Bootstrapped pipx via pip
+    USE_PIPX=true
+    INSTALL_TRACK="A"
+    ok "Track A: pipx (bootstrapped via pip)"
 else
-    # Track B: pip only (no venv, no pipx)
+    # pipx bootstrap failed — fall back to pip --user
     INSTALL_TRACK="B"
-    info "Track B: pip --user (no venv available for pipx)"
 fi
 
 if [ "$INSTALL_TRACK" = "B" ]; then
     ok "Track B: pip --user"
-    warn "Less isolation than pipx. Consider installing python3-venv for Track A."
+    warn "Less isolation than pipx. Consider installing pipx from your package manager."
     warn "Binaries go to ~/.local/bin — ensure it is on your PATH."
 fi
 

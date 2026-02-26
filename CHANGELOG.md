@@ -7,6 +7,25 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-02-26
+
+### Fixed
+
+- **Pipx-first detection in all installers** (`install.sh`, `install.py`, `install.ps1`):
+  installers no longer require pip when pipx is already present and functional.
+  Previously, a user with a working pipx (installed via `apt`, `winget`, `scoop`) but
+  no system pip would be blocked at Step 1 with "pip is required" — the exact scenario
+  reported by a field user who said "Docker would be easier".
+- **Functional pipx health check**: all installers now probe `pipx --version` (not just
+  `command -v pipx`) to guard against stale shims, broken venvs, or removed Python
+  interpreters.
+- **Detection ladder reordered**: pipx checked first; pip/venv/PEP 668 probed only when
+  pipx is missing or broken. Track A (pipx) proceeds without pip when pipx is pre-installed.
+- **Messaging**: installers no longer say "pip is required" generically; they recommend
+  installing pipx from the OS package manager (`apt install pipx`, `winget install pipx`)
+  as the primary recovery path.
+- **Installing Python guide** linked from all three installers when Python is not found.
+
 ## [0.5.2] — 2026-02-26
 
 ### Added

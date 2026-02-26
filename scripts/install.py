@@ -212,6 +212,15 @@ def find_uv() -> str | None:
     return path if path else None
 
 
+def probe_pipx_health(pipx_cmd: str = "pipx") -> bool:
+    """Verify pipx is functional, not just present on PATH.
+
+    Guards against stale shims, broken venvs, or removed Python interpreters.
+    """
+    result = run_cmd([pipx_cmd, "--version"], check=False, capture=True)
+    return result.returncode == 0
+
+
 # ---------------------------------------------------------------------------
 # Install hints (platform-specific guidance)
 # ---------------------------------------------------------------------------
@@ -260,14 +269,17 @@ def print_python_hint() -> None:
     }
     info(f"  {hints.get(plat, 'Download from https://www.python.org/downloads/')}")
     print()
+    info("Detailed guide: https://github.com/ovitrac/AdservioToolbox/blob/main/docs/INSTALLING_PYTHON.md")
+    print()
 
 
 def print_pipx_hint() -> None:
+    """Print OS-specific instructions for installing pipx."""
     plat = detect_platform()
-    warn("This Python is externally managed (PEP 668).")
-    warn("pip install --user is blocked to protect system packages.")
     print()
+    info("pipx is required to install tools in isolated environments.")
     info("Install pipx from your system package manager:")
+    print()
     hints = {
         "debian": "sudo apt install -y pipx && pipx ensurepath",
         "rhel": "sudo dnf install -y pipx && pipx ensurepath",
@@ -278,6 +290,8 @@ def print_pipx_hint() -> None:
     }
     info(f"  {hints.get(plat, 'See https://pipx.pypa.io/stable/installation/')}")
     print()
+    info("Then re-run this script.")
+    print()
 
 
 # ---------------------------------------------------------------------------
@@ -286,31 +300,43 @@ def print_pipx_hint() -> None:
 
 
 def ensure_pipx(python_cmd: str, is_pep668: bool) -> str | None:
-    """Ensure pipx is available. Returns pipx command string or None."""
+    """Ensure pipx is available and functional. Returns pipx command or None.
+
+    Called only when the initial pipx health check failed.
+    Attempts to bootstrap pipx via pip when possible.
+    """
     existing = find_pipx()
-    if existing:
-        ok(f"pipx found: {existing}")
+    if existing and probe_pipx_health(existing):
+        ok(f"pipx functional: {existing}")
         return existing
 
+    if existing:
+        warn(f"pipx found at {existing} but not functional — attempting reinstall")
+
+    # PEP 668: defense-in-depth (caller should have caught this already)
     if is_pep668:
         print_pipx_hint()
         return None
 
-    info("pipx not found — installing via pip ...")
+    info("Bootstrapping pipx via pip ...")
     args = python_cmd.split() + ["-m", "pip", "install", "--user", "pipx"]
     result = run_cmd(args, check=False)
     if result.returncode != 0:
-        warn("Could not install pipx via pip.")
+        warn("Could not bootstrap pipx via pip.")
         return None
 
     # Try ensurepath
     run_cmd(["pipx", "ensurepath"], check=False, quiet=True)
 
-    # Re-check
+    # Re-check with functional probe
     found = find_pipx()
-    if found:
+    if found and probe_pipx_health(found):
         ok(f"pipx installed: {found}")
-    return found
+        return found
+
+    if found:
+        warn(f"pipx installed at {found} but health check failed")
+    return None
 
 
 def pipx_install(
@@ -482,8 +508,8 @@ def do_install(args: argparse.Namespace) -> None:
     info(f"Prerequisites: Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+")
     print()
 
-    # ── Step 1: Find Python ──────────────────────────────────────────────
-    step(1, f"Check Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ and capabilities")
+    # ── Step 1: Find Python and package tools ───────────────────────────
+    step(1, f"Check Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ and package tools")
 
     python_info = find_python()
     if not python_info:
@@ -493,36 +519,45 @@ def do_install(args: argparse.Namespace) -> None:
     python_cmd, python_ver = python_info
     ok(f"Python {python_ver} ({python_cmd})")
 
-    has_pip = probe_pip(python_cmd)
-    has_venv = probe_venv(python_cmd)
-    is_pep668 = probe_pep668(python_cmd)
+    # --- 1b: Check pipx health first (pipx-first policy) ---
+    # If pipx is already present and functional, pip is not needed at all.
+    # Modern distros often ship pipx from the system package manager without pip.
+    pipx_ready = False
+    existing_pipx = find_pipx()
+    if existing_pipx and probe_pipx_health(existing_pipx):
+        pipx_ready = True
+        ok(f"pipx functional ({existing_pipx})")
 
-    if not has_pip:
-        err("Python pip module is required but not available.")
-        plat = detect_platform()
-        if plat == "debian":
-            info("  sudo apt-get install -y python3-pip")
-        elif plat == "windows":
-            info("  python -m ensurepip")
+    # --- 1c: Probe pip/venv/PEP668 only if pipx is not ready ---
+    has_pip = False
+    has_venv = False
+    is_pep668 = False
+
+    if not pipx_ready:
+        has_pip = probe_pip(python_cmd)
+        has_venv = probe_venv(python_cmd)
+        is_pep668 = probe_pep668(python_cmd)
+
+        if has_pip:
+            ok("pip available (for pipx bootstrap)")
+        if has_venv:
+            ok("venv available")
         else:
-            info("  See https://pip.pypa.io/en/stable/installation/")
-        sys.exit(2)
-    ok("pip available")
+            warn("venv not available — pipx bootstrap may need it")
 
-    if has_venv:
-        ok("venv available")
-    else:
-        warn("venv not available — Track A (pipx) may not work.")
+        # No pipx AND no pip → only path is OS package manager
+        if not has_pip:
+            err("Neither pipx nor pip is available.")
+            err("pipx is required to install tools in isolated environments.")
+            print_pipx_hint()
+            sys.exit(2)
 
-    # PEP 668 early exit
-    if is_pep668 and not find_pipx():
-        err("This Python is externally managed (PEP 668).")
-        err("All pip install --user commands are blocked by the system.")
-        print()
-        print_pipx_hint()
-        sys.exit(2)
-    elif is_pep668:
-        ok("PEP 668 detected, but pipx is already installed — proceeding")
+        # pip available but PEP 668 blocks pip install --user → can't bootstrap
+        if is_pep668:
+            err("pip is available but this Python is externally managed (PEP 668).")
+            err("Cannot bootstrap pipx via pip — the system blocks pip install --user.")
+            print_pipx_hint()
+            sys.exit(2)
 
     # ── Step 2: Select install track ─────────────────────────────────────
     step(2, "Select install track")
@@ -530,21 +565,22 @@ def do_install(args: argparse.Namespace) -> None:
     pipx_cmd_str: str | None = None
     install_track = ""
 
-    if has_venv or find_pipx():
+    if pipx_ready:
+        # pipx already verified in Step 1 — use it directly (no pip needed)
+        pipx_cmd_str = existing_pipx
+        install_track = "A"
+        ok("Track A: pipx (pre-installed, isolated environments)")
+    else:
         pipx_cmd_str = ensure_pipx(python_cmd, is_pep668)
         if pipx_cmd_str:
             install_track = "A"
-            ok("Track A: pipx (isolated environments)")
+            ok("Track A: pipx (bootstrapped via pip)")
         else:
             install_track = "B"
-            warn("Falling back to Track B (pip --user).")
-    else:
-        install_track = "B"
-        info("Track B: pip --user (no venv available for pipx)")
 
     if install_track == "B":
         ok("Track B: pip --user")
-        warn("Less isolation than pipx. Consider installing python3-venv.")
+        warn("Less isolation than pipx. Consider installing pipx from your package manager.")
 
     use_pipx = install_track == "A" and pipx_cmd_str is not None
 

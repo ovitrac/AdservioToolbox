@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.5.2-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
+[![Version](https://img.shields.io/badge/version-0.5.3-orange.svg)](https://github.com/ovitrac/AdservioToolbox/releases)
 [![Tests](https://img.shields.io/badge/e2e-18%20passing-brightgreen.svg)](#try-it--end-to-end-demo)
 [![Doctor](https://img.shields.io/badge/doctor-12%2F12%20passing-brightgreen.svg)](#verification)
 [![Challenges](https://img.shields.io/badge/challenges-7%2F7%20passing-brightgreen.svg)](#try-it--end-to-end-demo)
@@ -192,11 +192,12 @@ python install.py           # Windows
 
 All three installers (`install.sh`, `install.ps1`, `install.py`) perform the same steps:
 
-1. Detect Python version and check for `pip` + `venv`
-2. Install or bootstrap `pipx` (if not present)
-3. Install `memctl[mcp,docs]`, `cloakmcp`, and `adservio-toolbox` via pipx
-4. Run `toolboxctl install --global` to wire Claude Code (hooks, permissions, CLAUDE.md)
-5. Run `toolboxctl doctor` to validate the installation
+1. Detect Python 3.10+ and check for a **working pipx** (`pipx --version`)
+2. If pipx is already functional — proceed directly (pip is **not** required)
+3. If pipx is missing — bootstrap it via pip, or print OS-specific install instructions
+4. Install `memctl[mcp,docs]`, `cloakmcp`, and `adservio-toolbox` via pipx
+5. Run `toolboxctl install --global` to wire Claude Code (hooks, permissions, CLAUDE.md)
+6. Run `toolboxctl doctor` to validate the installation
 
 On Windows, hooks are wired using Python entrypoints (`.py`) instead of Bash scripts — no Git Bash required.
 
@@ -242,14 +243,16 @@ bash scripts/playground.sh --teardown --dir /path/to/project
 
 ### Install tracks
 
-The installer selects the best available method:
+The installer uses a **pipx-first** detection ladder:
 
-| Track | Requirements | Method |
-|-------|-------------|--------|
-| **A** (recommended) | Python + pip + venv | pipx (isolated environments) |
-| **B** (fallback) | Python + pip | `pip install --user` (less isolation) |
+| Track | Condition | Method |
+|-------|-----------|--------|
+| **A** (recommended) | pipx already installed and functional | pipx directly — **pip not needed** |
+| **A** (bootstrapped) | pipx missing, pip + venv available | bootstrap pipx via pip, then pipx |
+| **B** (fallback) | pipx bootstrap failed, pip available | `pip install --user` (less isolation) |
 
-If Python is missing, the installer prints distro-specific install instructions and exits.
+If neither pipx nor pip is available, the installer recommends installing pipx from the OS package manager (`apt install pipx`, `winget install pipx`, etc.) and exits.
+If Python is missing, the installer prints platform-specific instructions and links to the [Installing Python](docs/INSTALLING_PYTHON.md) guide.
 
 ### Upgrade / Uninstall
 
@@ -516,7 +519,7 @@ bash scripts/build-release.sh --clean           # remove release/ directory
 - **Isolated playground validation** — `toolboxctl playground` tests in a clean venv, never touches your environment.
 - **Zero coupling** — sub-projects are installed, not imported; no shared Python state.
 - **Independent release cadence** — memctl, CloakMCP, and the toolbox version independently.
-- **Capability-based installer** — detects Python, pip, venv and selects the best install track; never runs sudo.
+- **Pipx-first installer** — checks for a working pipx first (pip not required); falls back to pip bootstrap or `pip --user`; never runs sudo.
 - **Reversible global wiring** — `toolboxctl install --uninstall` cleanly removes hooks, permissions, and CLAUDE.md block.
 - **Reversible project wiring** — `toolboxctl deinit` removes all toolbox artifacts while preserving `.memory/`, hooks, and user CLAUDE.md content.
 - **Auto-updater** — `toolboxctl update` detects install method (pipx/pip) and upgrades all components; `--check` for dry-run version comparison.

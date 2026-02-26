@@ -113,7 +113,7 @@ Install tracks:
 Exit codes:
   0  Success
   1  Error during installation
-  2  Missing prerequisite (Python < 3.10, no pip)
+  2  Missing prerequisite (Python < 3.10, no pipx or pip)
 
 Examples:
   .\install.ps1                        # full install + global wiring
@@ -197,17 +197,38 @@ function Test-ExternallyManaged {
 # pipx helpers
 # ---------------------------------------------------------------------------
 
+function Test-PipxHealth {
+    # Returns $true if pipx is installed and functional, $false otherwise.
+    # Guards against stale shims, broken venvs, or removed Python interpreters.
+    if (-not (Test-Command "pipx")) { return $false }
+    try {
+        $null = & pipx --version 2>$null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
 function Ensure-Pipx {
-    if (Test-Command "pipx") {
+    # Try to get a working pipx. Called only when PipxReady is false
+    # and pip is available (PEP 668 not blocking).
+    if (Test-PipxHealth) {
         $ver = & pipx --version 2>$null
         Write-Ok "pipx found: $ver"
         return $true
     }
 
-    # PEP 668: skip pip install, suggest system package manager
+    # pipx on PATH but broken?
+    if (Test-Command "pipx") {
+        Write-Warn "pipx found on PATH but not functional - attempting reinstall via pip"
+    } else {
+        Write-Info "pipx not found - installing via pip ..."
+    }
+
+    # PEP 668: defense-in-depth (caller should have caught this already)
     if ($script:IsExternallyManaged) {
         Write-Warn "This Python is externally managed (PEP 668)."
-        Write-Warn "pip install --user is blocked by the system."
+        Write-Warn "Cannot bootstrap pipx via pip - the system blocks pip install --user."
         Write-Host ""
         Write-Info "Install pipx using one of these methods:"
         Write-Host ""
@@ -224,16 +245,14 @@ function Ensure-Pipx {
         return $false
     }
 
-    Write-Info "pipx not found - installing via pip ..."
-
     if (-not $DryRun) {
         try {
             Invoke-Python @("-m", "pip", "install", "--user", "pipx") 2>$null | Out-Null
             Invoke-Python @("-m", "pipx", "ensurepath") 2>$null | Out-Null
         } catch {}
 
-        # Check if pipx is now available
-        if (Test-Command "pipx") {
+        # Re-check with functional probe
+        if (Test-PipxHealth) {
             Write-Ok "pipx installed"
             return $true
         }
@@ -257,7 +276,7 @@ function Ensure-Pipx {
     }
 
     # pip install failed
-    Write-Warn "Could not install pipx via pip."
+    Write-Warn "Could not bootstrap pipx via pip."
     Write-Host ""
     Write-Info "Install pipx manually using one of these methods:"
     Write-Host ""
@@ -362,14 +381,14 @@ if ($Uninstall) {
 Write-Host ""
 Write-Host "Adservio Claude Code Toolbox - Installer" -ForegroundColor White
 Write-Host ""
-Write-Info "Prerequisites: Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+, pipx (installed automatically)"
+Write-Info "Prerequisites: Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+, pipx (detected or bootstrapped)"
 Write-Host ""
 
 # ===========================================================================
 # STEP 1: Check Python + capabilities
 # ===========================================================================
 
-Write-Step 1 $TotalSteps "Check Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ and capabilities"
+Write-Step 1 $TotalSteps "Check Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ and package tools"
 
 $Python = Find-Python
 
@@ -388,45 +407,46 @@ if (-not $Python) {
     Write-Info "Or download from https://www.python.org/downloads/"
     Write-Warn "Check 'Add Python to PATH' during installation!"
     Write-Host ""
+    Write-Info "Detailed guide: https://github.com/ovitrac/AdservioToolbox/blob/main/docs/INSTALLING_PYTHON.md"
+    Write-Host ""
     exit 2
 }
 
 Write-Ok "Python $($Python.Version) ($($Python.Cmd)$(if($Python.Args){' ' + ($Python.Args -join ' ')}))"
 
-# Probe capabilities
-$HasPip = Test-Pip
-$HasVenv = Test-Venv
-$IsExternallyManaged = Test-ExternallyManaged
-
-if (-not $HasPip) {
-    Write-Err "Python pip module is required but not available."
-    Write-Host ""
-    Write-Info "Install pip:"
-    Write-Host "  $(if($Python.Cmd -eq 'py'){'py -3'}else{$Python.Cmd}) -m ensurepip --user"
-    Write-Host ""
-    Write-Info "Or reinstall Python with pip included (check the box during install)."
-    Write-Host ""
-    exit 2
-}
-Write-Ok "pip available"
-
-if ($HasVenv) {
-    Write-Ok "venv available"
-} else {
-    Write-Warn "venv not available - pipx may not work."
-    Write-Warn "Reinstall Python and ensure the 'py launcher' and 'pip' options are checked."
+# --- 1b: Check pipx health first (pipx-first policy) ---
+# If pipx is already present and functional, pip is not needed at all.
+# Users may have installed pipx via winget, scoop, or choco without pip.
+$PipxReady = Test-PipxHealth
+if ($PipxReady) {
+    $ver = & pipx --version 2>$null
+    Write-Ok "pipx functional ($ver)"
 }
 
-# PEP 668 early exit: if externally managed and no pipx, stop now.
-if ($IsExternallyManaged) {
-    if (Test-Command "pipx") {
-        Write-Ok "PEP 668 detected, but pipx is already installed - proceeding"
+# --- 1c: Probe pip/venv/PEP668 only if pipx is not ready ---
+$HasPip = $false
+$HasVenv = $false
+$IsExternallyManaged = $false
+
+if (-not $PipxReady) {
+    $HasPip = Test-Pip
+    $HasVenv = Test-Venv
+    $IsExternallyManaged = Test-ExternallyManaged
+
+    if ($HasPip) { Write-Ok "pip available (for pipx bootstrap)" }
+    if ($HasVenv) {
+        Write-Ok "venv available"
     } else {
+        Write-Warn "venv not available - pipx bootstrap may need it"
+    }
+
+    # No pipx AND no pip -> only path is installing pipx from a package manager
+    if (-not $HasPip) {
         Write-Host ""
-        Write-Err "This Python is externally managed (PEP 668)."
-        Write-Err "All pip install --user commands are blocked by the system."
+        Write-Err "Neither pipx nor pip is available."
+        Write-Err "pipx is required to install tools in isolated environments."
         Write-Host ""
-        Write-Info "Install pipx from your system package manager instead:"
+        Write-Info "Install pipx using one of these methods:"
         Write-Host ""
         Write-Host "  winget install pipx                     " -ForegroundColor White -NoNewline
         Write-Host "# Windows Package Manager (recommended)"
@@ -436,8 +456,28 @@ if ($IsExternallyManaged) {
         Write-Host "# Chocolatey"
         Write-Host ""
         Write-Info "Then: pipx ensurepath"
-        Write-Info "Then re-run this script. pipx will install tools in isolated"
-        Write-Info "virtual environments - no conflict with system packages."
+        Write-Info "Then re-run this script."
+        Write-Host ""
+        exit 2
+    }
+
+    # pip available but PEP 668 blocks pip install --user -> can't bootstrap pipx
+    if ($IsExternallyManaged) {
+        Write-Host ""
+        Write-Err "pip is available but this Python is externally managed (PEP 668)."
+        Write-Err "Cannot bootstrap pipx via pip - the system blocks pip install --user."
+        Write-Host ""
+        Write-Info "Install pipx using one of these methods:"
+        Write-Host ""
+        Write-Host "  winget install pipx                     " -ForegroundColor White -NoNewline
+        Write-Host "# Windows Package Manager (recommended)"
+        Write-Host "  scoop install pipx                      " -ForegroundColor White -NoNewline
+        Write-Host "# Scoop"
+        Write-Host "  choco install pipx                      " -ForegroundColor White -NoNewline
+        Write-Host "# Chocolatey"
+        Write-Host ""
+        Write-Info "Then: pipx ensurepath"
+        Write-Info "Then re-run this script."
         Write-Host ""
         exit 2
     }
@@ -452,24 +492,24 @@ Write-Step 2 $TotalSteps "Select install track"
 $UsePipx = $false
 $InstallTrack = ""
 
-if ($HasVenv -or (Test-Command "pipx")) {
-    # Track A: try pipx
-    if (Ensure-Pipx) {
-        $UsePipx = $true
-        $InstallTrack = "A"
-        Write-Ok "Track A: pipx (isolated environments)"
-    } else {
-        Write-Warn "Falling back to Track B (pip --user)."
-        $InstallTrack = "B"
-    }
+if ($PipxReady) {
+    # pipx already verified in Step 1 - use it directly (no pip needed)
+    $UsePipx = $true
+    $InstallTrack = "A"
+    Write-Ok "Track A: pipx (pre-installed, isolated environments)"
+} elseif (Ensure-Pipx) {
+    # Bootstrapped pipx via pip
+    $UsePipx = $true
+    $InstallTrack = "A"
+    Write-Ok "Track A: pipx (bootstrapped via pip)"
 } else {
+    # pipx bootstrap failed - fall back to pip --user
     $InstallTrack = "B"
-    Write-Info "Track B: pip --user (no venv available for pipx)"
 }
 
 if ($InstallTrack -eq "B") {
     Write-Ok "Track B: pip --user"
-    Write-Warn "Less isolation than pipx. Consider installing pipx for Track A."
+    Write-Warn "Less isolation than pipx. Consider installing pipx (winget install pipx)."
 }
 
 # ===========================================================================
