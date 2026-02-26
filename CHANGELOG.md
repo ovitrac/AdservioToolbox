@@ -7,7 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.5.1] — 2026-02-26
+## [0.5.2] — 2026-02-26
 
 ### Added
 
@@ -15,7 +15,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   why Python (not Node, not Docker), minimum version rationale (3.10+), multiple Python
   coexistence, version selection (`py -3.12`, `--python` flag, PATH ordering), platform
   matrix (Windows/macOS/Linux), user-mode options, uv escape hatch.
-- **README**: link to Installing Python guide in Quick Install section, doctor badge (12/12)
+- **README Quick Install**: Windows (PowerShell) and cross-platform (Python) install sections,
+  clarification that hooks use `.py` entrypoints on Windows (no Git Bash required),
+  link to Installing Python guide, doctor badge (12/12)
+- **QUICKSTART.md**: three install options (Linux/macOS, Windows, cross-platform Python),
+  link to Installing Python guide
 
 ## [0.5.0] — 2026-02-26
 

@@ -4,19 +4,34 @@ Get the Adservio Claude Code Toolbox running in under 2 minutes.
 
 ---
 
-## 1. Install (one-liner)
+## 1. Install
+
+**Linux / macOS (one-liner):**
 
 ```bash
 curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/latest/download/install.sh | bash
 ```
 
-This installs `memctl`, `cloakmcp`, and `adservio-toolbox` via pipx, wires Claude Code globally, and runs `toolboxctl doctor`.
-
 **Windows (PowerShell):**
 
 ```powershell
-irm https://github.com/ovitrac/AdservioToolbox/releases/latest/download/install.ps1 | iex
+irm https://github.com/ovitrac/AdservioToolbox/releases/latest/download/install.ps1 -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
+
+**Cross-platform (Python — works everywhere):**
+
+```bash
+curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/latest/download/install.py -o install.py
+python3 install.py       # Linux / macOS
+python install.py        # Windows
+```
+
+All three installers do the same thing: install `memctl`, `cloakmcp`, and `adservio-toolbox` via pipx, wire Claude Code globally, and run `toolboxctl doctor`.
+
+On Windows, hooks use Python entrypoints (`.py`) — no Git Bash required.
+
+**Need Python?** See [Installing Python](docs/INSTALLING_PYTHON.md).
 
 **Manual alternative:**
 
