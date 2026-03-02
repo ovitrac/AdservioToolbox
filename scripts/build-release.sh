@@ -3,7 +3,8 @@
 #
 # Builds release assets for GitHub Releases:
 #   - install.sh (bootstrap script)
-#   - install.ps1 (Windows skeleton)
+#   - install.ps1 (Windows PowerShell installer)
+#   - install.py (cross-platform Python installer)
 #   - adservio-toolbox-VERSION.tar.gz (sdist)
 #   - adservio-toolbox-VERSION.zip (convenience archive)
 #   - SHA256SUMS (checksums for all assets)
@@ -79,6 +80,7 @@ Output:
   release/
     install.sh
     install.ps1
+    install.py
     ${PKG_NAME}-VERSION.tar.gz
     ${PKG_NAME}-VERSION.zip
     SHA256SUMS
@@ -180,13 +182,13 @@ SDIST_NAME="${PKG_NAME}-${VERSION}"
 step 2 "Pre-flight checks"
 
 # Check required files exist
-for f in scripts/install.sh scripts/install.ps1; do
+for f in scripts/install.sh scripts/install.ps1 scripts/install.py; do
     if [ ! -f "$REPO_ROOT/$f" ]; then
         err "Required file missing: $f"
         exit 1
     fi
 done
-ok "install.sh and install.ps1 present"
+ok "install.sh, install.ps1, and install.py present"
 
 # Check Python build tools
 PYTHON=""
@@ -346,9 +348,9 @@ if ! $ARG_DRY_RUN; then
         # Generate SHA256 checksums for all release files
         # Use shasum (macOS) or sha256sum (Linux)
         if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum -- *.tar.gz *.zip *.sh *.ps1 2>/dev/null > SHA256SUMS
+            sha256sum -- *.tar.gz *.zip *.sh *.ps1 *.py 2>/dev/null > SHA256SUMS
         elif command -v shasum >/dev/null 2>&1; then
-            shasum -a 256 -- *.tar.gz *.zip *.sh *.ps1 2>/dev/null > SHA256SUMS
+            shasum -a 256 -- *.tar.gz *.zip *.sh *.ps1 *.py 2>/dev/null > SHA256SUMS
         else
             err "Neither sha256sum nor shasum found"
             exit 1
@@ -400,6 +402,7 @@ else
     info "Release assets (dry-run):"
     info "  install.sh"
     info "  install.ps1"
+    info "  install.py"
     info "  ${SDIST_NAME}.tar.gz"
     info "  ${SDIST_NAME}.zip"
     info "  SHA256SUMS"

@@ -10,7 +10,7 @@
 ### Option A: One-liner (recommended)
 
 ```bash
-curl -fsSL https://github.com/Adservio-Dev/AdservioToolbox/releases/download/v0.2.0/install.sh \
+curl -fsSL https://github.com/ovitrac/AdservioToolbox/releases/latest/download/install.sh \
   -o install.sh && bash install.sh
 ```
 

@@ -7,6 +7,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-03-02
+
+### Fixed
+
+- **Release pipeline missing `install.py`**: the GitHub Actions release workflow and
+  `build-release.sh` now include `install.py` as a release asset alongside `install.sh`
+  and `install.ps1`. Previously, users following the "Cross-platform (Python)" install
+  track got a 404 because the file was built but never uploaded.
+- **SHA256SUMS incomplete**: checksum generation now covers `*.py` assets (was limited
+  to `*.sh` and `*.ps1`).
+- **Stale install URLs**: `docs/workflows/first-session.md` and `docs/cheat/L1.md`
+  pointed to `Adservio-Dev/AdservioToolbox` at `v0.2.0` — updated to
+  `ovitrac/AdservioToolbox` with `/latest/` auto-resolve.
+- **README pinned-version example** updated from `v0.4.5` to `v0.5.3`.
+
 ## [0.5.3] — 2026-02-26
 
 ### Fixed

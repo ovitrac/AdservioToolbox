@@ -110,6 +110,7 @@ jobs:
           gh release create "$TAG" \
             release/install.sh \
             release/install.ps1 \
+            release/install.py \
             release/adservio-toolbox-${VERSION}.tar.gz \
             release/SHA256SUMS \
             $([ -f "release/adservio-toolbox-${VERSION}.zip" ] && echo "release/adservio-toolbox-${VERSION}.zip") \
@@ -127,7 +128,7 @@ jobs:
           echo "**Assets:**" >> "$GITHUB_STEP_SUMMARY"
           echo "| File | Size |" >> "$GITHUB_STEP_SUMMARY"
           echo "|------|------|" >> "$GITHUB_STEP_SUMMARY"
-          for f in release/install.sh release/install.ps1 "release/adservio-toolbox-${VERSION}.tar.gz" "release/adservio-toolbox-${VERSION}.zip" release/SHA256SUMS; do
+          for f in release/install.sh release/install.ps1 release/install.py "release/adservio-toolbox-${VERSION}.tar.gz" "release/adservio-toolbox-${VERSION}.zip" release/SHA256SUMS; do
             if [ -f "$f" ]; then
               SIZE=$(du -h "$f" | cut -f1)
               echo "| \`$(basename "$f")\` | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
