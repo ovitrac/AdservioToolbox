@@ -223,6 +223,20 @@ cd /path/to/your-project
 toolboxctl init
 ```
 
+### Claude Code plugins — the `adservio` marketplace
+
+The Adservio tools are also published as Claude Code plugins, installable all together or one by one:
+
+```text
+/plugin marketplace add ovitrac/AdservioToolbox
+/plugin install adservio-toolbox@adservio    # everything
+/plugin install talktome@adservio            # or one tool
+```
+
+A plugin wires its tool into Claude Code; the tool itself is installed with pipx. Available today:
+**talktome** (spoken alerts from your sessions). CloakMCP and memctl join in their next releases; `toolboxctl
+install` will then use these plugins instead of writing hooks into `settings.json`.
+
 ### Per-project setup
 
 Use `scripts/playground.sh` to set up any project directory with a single command (init + hooks + starter CLAUDE.md):

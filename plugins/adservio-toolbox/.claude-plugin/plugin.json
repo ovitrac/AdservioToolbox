@@ -1,0 +1,10 @@
+{
+  "name": "adservio-toolbox",
+  "version": "0.1.0",
+  "description": "Everything at once: installs every Adservio plugin of the adservio marketplace.",
+  "author": { "name": "Olivier Vitrac", "email": "olivier.vitrac@adservio.fr" },
+  "homepage": "https://github.com/ovitrac/AdservioToolbox",
+  "repository": "https://github.com/ovitrac/AdservioToolbox",
+  "license": "MIT",
+  "dependencies": ["talktome@adservio"]
+}
