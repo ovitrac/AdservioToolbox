@@ -26,10 +26,10 @@
         "source": "git-subdir",
         "url": "https://github.com/ovitrac/TalkToMe.git",
         "path": "plugin",
-        "ref": "v0.3.0"
+        "ref": "v0.4.0"
       },
-      "description": "Your Claude Code sessions call you by voice when they need your help, your attention or your input, or when a long turn has finished. Local text-to-speech in English, French, Spanish, Portuguese and Italian (Hindi, Mandarin experimental); voice and mood configurable.",
-      "version": "0.3.0",
+      "description": "Your Claude Code sessions call you by voice when they need your help, your attention or your input, or when a long turn has finished. Local text-to-speech in English, French, Spanish, Portuguese and Italian (Hindi, Mandarin experimental), German as a download; voice and mood configurable.",
+      "version": "0.4.0",
       "author": {
         "name": "Olivier Vitrac",
         "email": "olivier.vitrac@adservio.fr"

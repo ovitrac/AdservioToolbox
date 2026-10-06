@@ -10,7 +10,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **`adservio` Claude Code marketplace** (`.claude-plugin/marketplace.json`): the Adservio tools as Claude Code
-  plugins, installable one by one or all together. Lists `talktome` (TalkToMe, pinned to `v0.3.0`) and the
+  plugins, installable one by one or all together. Lists `talktome` (TalkToMe, pinned to `v0.4.0`) and the
   `adservio-toolbox` bundle (`plugins/adservio-toolbox/`), which depends on every Adservio plugin. CloakMCP and
   memctl join in their next releases.
 
